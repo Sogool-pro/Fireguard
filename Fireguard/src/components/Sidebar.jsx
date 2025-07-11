@@ -12,12 +12,14 @@ import {
 } from "lucide-react";
 import FireguardImg from "../assets/fireguard-logo.png";
 import Occupied from "../assets/occupied.svg";
+import { useNotification } from "../context/NotificationContext";
 
 const SidebarContext = createContext();
 
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const location = useLocation();
+  const { dashboardAlert, logsAlert } = useNotification();
 
   const navItems = [
     {
@@ -25,13 +27,14 @@ export default function Sidebar() {
       text: "Dashboard",
       icon: <LayoutDashboard size={20} />,
       active: location.pathname === "/",
+      alert: dashboardAlert,
     },
     {
       path: "/logs",
       text: "Logs",
       icon: <BookText size={20} />,
-      alert: true,
       active: location.pathname === "/logs",
+      alert: logsAlert,
     },
     {
       path: "/analytics",

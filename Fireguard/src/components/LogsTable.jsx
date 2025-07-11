@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { db } from "../firebase";
+import { ref, update } from "firebase/database";
 
 export default function LogsTable({ logs }) {
   const [filters, setFilters] = useState({
@@ -60,6 +62,7 @@ export default function LogsTable({ logs }) {
           "Flame Sensor",
           "Smoke Level",
           "CO Level",
+          "Acknowledge"
         ],
       ],
       body: filteredLogs.map((log) => [
@@ -71,12 +74,21 @@ export default function LogsTable({ logs }) {
         log.flame,
         log.smoke,
         log.carbonMonoxide,
+        log.acknowledged ? "✔" : ""
       ]),
       startY: 18,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [243, 244, 246] },
     });
     doc.save("logs.pdf");
+  };
+
+  // Acknowledge handler
+  const handleAcknowledge = (log) => {
+    if (!log.id) return;
+    if (!window.confirm("Are you sure you want to acknowledge this alert?")) return;
+    // Update the alert in Firebase
+    update(ref(db, `alerts/${log.id}`), { acknowledged: true });
   };
 
   return (
@@ -125,6 +137,9 @@ export default function LogsTable({ logs }) {
               <th className="px-4 py-3 text-left font-semibold text-gray-700">
                 CO Level
               </th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                Acknowledge
+              </th>
             </tr>
             <tr className="bg-gray-50">
               {Object.keys(filters).map((key) => (
@@ -138,6 +153,7 @@ export default function LogsTable({ logs }) {
                   />
                 </th>
               ))}
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -153,11 +169,23 @@ export default function LogsTable({ logs }) {
                 <td className="px-4 py-3">{log.flame}</td>
                 <td className="px-4 py-3">{log.smoke}</td>
                 <td className="px-4 py-3">{log.carbonMonoxide}</td>
+                <td className="px-4 py-3">
+                  {log.acknowledged ? (
+                    <span className="text-green-600 font-bold">✔</span>
+                  ) : (
+                    <button
+                      className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                      onClick={() => handleAcknowledge(log)}
+                    >
+                      Acknowledge
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
             {paginatedLogs.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-6 text-gray-400">
+                <td colSpan={9} className="text-center py-6 text-gray-400">
                   No logs found.
                 </td>
               </tr>

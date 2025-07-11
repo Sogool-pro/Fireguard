@@ -3,31 +3,28 @@ import { FaHome, FaThermometerHalf, FaCloud, FaPowerOff } from "react-icons/fa";
 import { MdCo2 } from "react-icons/md";
 import { GiSmokeBomb } from "react-icons/gi";
 import { useRoom } from "../context/RoomContext";
+import { db } from "../firebase";
+import { ref, update } from "firebase/database";
+import { useRoomChartModal } from "../context/RoomChartModalContext";
 
 // Blinking Logic
-function getBlinkingClass({
-  temperature,
-  smoke,
-  carbonMonoxide,
-  fire,
-  status,
-}) {
+function getBlinkingClass({ alert_level, status, fire, temperature, smoke, carbonMonoxide }) {
   if (status !== "Active") return "";
-  if (fire) return "blink-red";
-  const isFire = temperature > 50 || smoke > 800;
-  const isWarning =
-    (temperature > 35 && temperature <= 50) ||
-    (smoke > 500 && smoke <= 800) ||
-    (carbonMonoxide > 500 && carbonMonoxide <= 800);
-
-  if (isFire) return "blink-red";
-  if (isWarning) return "blink-yellow";
+  const thresholdAlarm =
+    fire ||
+    temperature > 50 ||
+    smoke > 800 ||
+    carbonMonoxide > 800;
+  const alertLevelAlarm =
+    alert_level && alert_level.toLowerCase() === "alert";
+  if (thresholdAlarm || alertLevelAlarm) return "blink-red";
   return "";
 }
 
 export default function RoomTile(props) {
   const { rooms, setRooms, setBuzzerOn } = useRoom();
   const { roomIndex, ...room } = props;
+  const { showRoomChart } = useRoomChartModal();
 
   const blinkingClass = getBlinkingClass(room);
 
@@ -53,13 +50,22 @@ export default function RoomTile(props) {
           : r
       )
     );
+    // Find the node name from roomName (e.g., ROOM NO. 1 -> NODE1)
+    const nodeMatch = room.roomName.match(/ROOM NO\. ?(\d+)/i);
+    if (nodeMatch) {
+      const nodeKey = `NODE${nodeMatch[1]}`;
+      update(ref(db, `sensor_data/${nodeKey}`), {
+        silenced: room.status === "Active" ? true : false,
+      });
+    }
   };
 
   return (
     <div
-      className={`rounded-2xl shadow-md p-6 w-80 max-w-full transition-colors duration-300 ${
+      className={`rounded-2xl shadow-md p-6 w-80 max-w-full transition-colors duration-300 cursor-pointer ${
         blinkingClass ? blinkingClass : "bg-[#f6fbfc]"
       }`}
+      onClick={() => showRoomChart(room)}
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-2">
@@ -69,8 +75,8 @@ export default function RoomTile(props) {
           </span>
         </div>
         <button
-          onClick={handlePowerClick}
-          className={`p-1 rounded-full transition-colors ${
+          onClick={e => { e.stopPropagation(); handlePowerClick(); }}
+          className={`p-1 rounded-full transition-colors cursor-pointer ${
             room.status === "Active"
               ? "bg-green-100 hover:bg-green-200"
               : "bg-gray-200 hover:bg-gray-300"

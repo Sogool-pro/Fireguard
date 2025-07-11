@@ -109,20 +109,19 @@ function getRoomData(alerts) {
   return Object.entries(roomMap).map(([name, value]) => ({ name, value }));
 }
 
-// Helper: Severity breakdown (dummy logic, adjust as needed)
+// Helper: Severity breakdown (improved logic using level/alert_level)
 function getSeverityData(alerts) {
-  let Warning = 0,
-    Escalated = 0,
-    Critical = 0;
+  let Normal = 0, Warning = 0, Alert = 0;
   alerts.forEach((alert) => {
-    if (alert.message?.toLowerCase().includes("warning")) Warning++;
-    else if (alert.message?.toLowerCase().includes("critical")) Critical++;
-    else Escalated++;
+    const level = (alert.level || alert.alert_level || "").toLowerCase();
+    if (level === "normal") Normal++;
+    else if (level === "warning") Warning++;
+    else if (level === "alert") Alert++;
   });
   return [
+    { name: "Normal", value: Normal },
     { name: "Warning", value: Warning },
-    { name: "Escalated", value: Escalated },
-    { name: "Critical", value: Critical },
+    { name: "Alert", value: Alert },
   ];
 }
 
@@ -194,6 +193,62 @@ function getRecentSensorData(alerts) {
   });
 }
 
+function getRoomSeverityData(alerts) {
+  const roomMap = {};
+  alerts.forEach((alert) => {
+    const room = alert.node ? `Room ${alert.node.replace("NODE", "")}` : "Unknown";
+    const level = (alert.level || alert.alert_level || "").toLowerCase();
+    if (!roomMap[room]) roomMap[room] = { room, Normal: 0, Warning: 0, Alert: 0 };
+    if (level === "normal") roomMap[room].Normal++;
+    else if (level === "warning") roomMap[room].Warning++;
+    else if (level === "alert") roomMap[room].Alert++;
+  });
+  return Object.values(roomMap);
+}
+
+function getSensorBreakdownData(alerts) {
+  let CO = 0, Smoke = 0, Flame = 0, Temp = 0, Humidity = 0;
+  alerts.forEach((alert) => {
+    const msg = (alert.message || "").toLowerCase();
+    if (msg.includes("co")) CO++;
+    if (msg.includes("smoke") || msg.includes("gas")) Smoke++;
+    if (msg.includes("flame") || alert.flame === 1) Flame++;
+    if (msg.includes("temp")) Temp++;
+    if (msg.includes("humidity")) Humidity++;
+  });
+  return [
+    { name: "CO", value: CO },
+    { name: "Smoke/Gas", value: Smoke },
+    { name: "Flame", value: Flame },
+    { name: "Temperature", value: Temp },
+    { name: "Humidity", value: Humidity },
+  ];
+}
+
+function getAlertTrendsData(alerts) {
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  const result = Array.from({ length: 12 }, (_, i) => ({
+    month: months[i], Normal: 0, Warning: 0, Alert: 0
+  }));
+  alerts.forEach((alert) => {
+    const date = alert.timestamp ? new Date(alert.timestamp.replace(" ", "T")) : null;
+    if (!date) return;
+    const m = date.getMonth();
+    const level = (alert.level || alert.alert_level || "").toLowerCase();
+    if (level === "normal") result[m].Normal++;
+    else if (level === "warning") result[m].Warning++;
+    else if (level === "alert") result[m].Alert++;
+  });
+  return result;
+}
+
+function getUnacknowledgedCount(alerts) {
+  return alerts.filter(alert => alert.acknowledged === false).length;
+}
+
 const COLORS = ["#2563eb", "#facc15", "#f87171", "#34d399", "#a78bfa"];
 
 export default function AnalyticsPage() {
@@ -220,42 +275,52 @@ export default function AnalyticsPage() {
   const responseTimeData = getResponseTimeData(alerts);
   const roomComparisonData = getRoomComparisonData(alerts);
   const realTimeSensorData = getRecentSensorData(alerts);
+  const roomSeverityData = getRoomSeverityData(alerts);
+  const sensorBreakdownData = getSensorBreakdownData(alerts);
+  const alertTrendsData = getAlertTrendsData(alerts);
+  const unacknowledgedCount = getUnacknowledgedCount(alerts);
 
   return (
     <div className="p-4 space-y-6">
-      {/* Monthly Alerts Line Chart */}
-      <div className="bg-white rounded-xl shadow p-4">
-        <h2 className="text-lg font-bold mb-2">Monthly Sensor Alerts</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={monthlyData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="CO"
-              stroke="#2563eb"
-              strokeWidth={3}
-              dot={{ r: 4 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="Smoke"
-              stroke="#facc15"
-              strokeWidth={3}
-              dot={{ r: 4 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="Flame"
-              stroke="#f87171"
-              strokeWidth={3}
-              dot={{ r: 4 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      {/* Alert Trends, Monthly Sensor Alerts & Unacknowledged Alerts */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Alert Trends */}
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="text-lg font-bold mb-2">Alert Trends</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={alertTrendsData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Normal" stroke="#34d399" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Warning" stroke="#facc15" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Alert" stroke="#f87171" strokeWidth={3} dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Monthly Sensor Alerts */}
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="text-lg font-bold mb-2">Monthly Sensor Alerts</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="CO" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Smoke" stroke="#facc15" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Flame" stroke="#f87171" strokeWidth={3} dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Unacknowledged Alerts */}
+        <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center justify-center">
+          <h2 className="text-lg font-bold mb-2">Unacknowledged Alerts</h2>
+          <p className="text-4xl font-bold text-red-500">{unacknowledgedCount}</p>
+        </div>
       </div>
 
       {/* Alert Source Bar & Room Distribution Pie */}
@@ -430,6 +495,40 @@ export default function AnalyticsPage() {
                 fill="url(#colorHumidity)"
               />
             </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Room-based Severity & Sensor Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Room-based Severity */}
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="text-lg font-bold mb-2">Room-based Severity</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={roomSeverityData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="room" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="Normal" stackId="a" fill="#34d399" />
+              <Bar dataKey="Warning" stackId="a" fill="#facc15" />
+              <Bar dataKey="Alert" stackId="a" fill="#f87171" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Sensor Breakdown */}
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="text-lg font-bold mb-2">Sensor Breakdown</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={sensorBreakdownData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#2563eb" />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>

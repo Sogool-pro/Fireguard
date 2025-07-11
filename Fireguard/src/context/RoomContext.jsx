@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useRef,
-  useEffect,
-} from "react";
+import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { db } from "../firebase";
 import { ref, onValue } from "firebase/database";
 
@@ -19,7 +13,6 @@ export function RoomProvider({ children }) {
   const [buzzerOn, setBuzzerOn] = useState(false);
   const audioRef = useRef(null);
 
-  // Fetch live room sensor data from Firebase
   useEffect(() => {
     const sensorRef = ref(db, "sensor_data");
     const unsub = onValue(sensorRef, (snapshot) => {
@@ -38,13 +31,15 @@ export function RoomProvider({ children }) {
           sensor.alert_active === false || sensor.silenced
             ? "Deactivated"
             : "Active",
+        alert_level: sensor.alert_level,
+        alert_message: sensor.alert_message,
+        silenced: sensor.silenced,
       }));
       setRooms(roomsArr);
     });
     return () => unsub();
   }, []);
 
-  // Control buzzer globally
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -57,6 +52,20 @@ export function RoomProvider({ children }) {
       audio.currentTime = 0;
     }
   }, [buzzerOn]);
+
+  useEffect(() => {
+    const anyAlarm = rooms.some(room => {
+      const thresholdAlarm =
+        room.fire ||
+        room.temperature > 50 ||
+        room.smoke > 800 ||
+        room.carbonMonoxide > 800;
+      const alertLevelAlarm =
+        room.alert_level && room.alert_level.toLowerCase() === "alert";
+      return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
+    });
+    setBuzzerOn(anyAlarm);
+  }, [rooms]);
 
   return (
     <RoomContext.Provider value={{ rooms, setRooms, buzzerOn, setBuzzerOn }}>
