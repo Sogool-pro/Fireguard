@@ -67,7 +67,7 @@ export default function Sidebar() {
           <img
             src={FireguardImg}
             className={`transition-all duration-300 ease-in-out ${
-              expanded ? "w-20" : "w-10"
+              expanded ? "w-50" : "w-20"
             }`}
             alt="Fireguard Logo"
           />
