@@ -6,6 +6,23 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 
+// Helper to format date as 'MAR 5 2025 9:00 pm'
+function formatLogDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date)) return dateStr;
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  let hour = date.getHours();
+  const min = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  hour = hour % 12;
+  hour = hour ? hour : 12;
+  return `${month} ${day} ${year} ${hour}:${min} ${ampm}`;
+}
+
 export default function RoomChartModal() {
   const { modal, closeRoomChart } = useRoomChartModal();
   const room = modal.room;
@@ -44,13 +61,13 @@ export default function RoomChartModal() {
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={history}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="time" tickFormatter={t => t?.split(' ')[1] || t} tick={{ fill: '#6b7280', fontSize: 12 }} />
+          <XAxis dataKey="time" tickFormatter={t => formatLogDate(t)} tick={{ fill: '#6b7280', fontSize: 12 }} />
           {options.flame ? (
             <YAxis domain={[0, 1]} ticks={[0, 1]} tickFormatter={v => (v === 1 ? "Flame Detected" : "No Flame")} tick={{ fill: '#6b7280', fontSize: 12 }} />
           ) : (
             <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
           )}
-          <Tooltip contentStyle={{ background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #0001' }} labelStyle={{ color: '#374151' }} />
+          <Tooltip contentStyle={{ background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #0001' }} labelStyle={{ color: '#374151' }} labelFormatter={formatLogDate} />
           <Legend wrapperStyle={{ color: '#6b7280', fontSize: 13 }} />
           <Line
             type={options.flame ? "stepAfter" : "monotone"}

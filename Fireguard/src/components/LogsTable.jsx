@@ -5,6 +5,23 @@ import "jspdf-autotable";
 import { db } from "../firebase";
 import { ref, update } from "firebase/database";
 
+// Helper to format date as 'MAR 5 2025 9:00 pm'
+function formatLogDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date)) return dateStr;
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  let hour = date.getHours();
+  const min = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  hour = hour % 12;
+  hour = hour ? hour : 12;
+  return `${month} ${day} ${year} ${hour}:${min} ${ampm}`;
+}
+
 export default function LogsTable({ logs }) {
   const [filters, setFilters] = useState({
     date: "",
@@ -159,7 +176,7 @@ export default function LogsTable({ logs }) {
           <tbody>
             {paginatedLogs.map((log, idx) => (
               <tr key={idx} className={idx % 2 === 1 ? "bg-gray-50" : ""}>
-                <td className="px-4 py-3">{log.date}</td>
+                <td className="px-4 py-3">{formatLogDate(log.date)}</td>
                 <td className="px-4 py-3">{log.room}</td>
                 <td className="px-4 py-3 font-semibold text-red-700">
                   {log.alert}
