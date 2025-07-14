@@ -17,28 +17,28 @@ function App() {
   return (
     <Router>
       <AlarmModalProvider>
-        <RoomProvider>
+    <RoomProvider>
           <NotificationProvider>
             <RoomChartModalProvider>
               <AlarmWatcher />
               <RoomChartModal />
-              <div className="flex h-screen overflow-hidden">
-                <Sidebar />
-                <main className="flex-1 min-h-0 h-screen overflow-y-auto bg-gray-50">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/logs" element={<LogsPage />} />
-                    <Route path="/analytics" element={<AnalyticsPage />} />
-                    <Route path="/users" element={<UsersPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                  </Routes>
-                </main>
-              </div>
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 min-h-0 h-screen overflow-y-auto bg-gray-50">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/logs" element={<LogsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </main>
+        </div>
             </RoomChartModalProvider>
           </NotificationProvider>
         </RoomProvider>
       </AlarmModalProvider>
-    </Router>
+      </Router>
   );
 }
 

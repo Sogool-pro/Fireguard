@@ -301,20 +301,20 @@ export default function AnalyticsPage() {
           </ResponsiveContainer>
         </div>
         {/* Monthly Sensor Alerts */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Monthly Sensor Alerts</h2>
+      <div className="bg-white rounded-xl shadow p-4">
+        <h2 className="text-lg font-bold mb-2">Monthly Sensor Alerts</h2>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
+          <LineChart data={monthlyData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis allowDecimals={false} />
+            <Tooltip />
+            <Legend />
               <Line type="monotone" dataKey="CO" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
               <Line type="monotone" dataKey="Smoke" stroke="#facc15" strokeWidth={3} dot={{ r: 4 }} />
               <Line type="monotone" dataKey="Flame" stroke="#f87171" strokeWidth={3} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          </LineChart>
+        </ResponsiveContainer>
         </div>
         {/* Unacknowledged Alerts */}
         <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center justify-center">

@@ -11,6 +11,7 @@ export function useRoom() {
 export function RoomProvider({ children }) {
   const [rooms, setRooms] = useState([]);
   const [buzzerOn, setBuzzerOn] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -40,19 +41,26 @@ export function RoomProvider({ children }) {
     return () => unsub();
   }, []);
 
+  // Simplified buzzer logic - play when there's an alarm
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    
     if (buzzerOn) {
       audio.loop = true;
       audio.currentTime = 0;
-      audio.play();
+      audio.play().catch(error => {
+        console.log("Buzzer play failed:", error);
+        // If autoplay fails, try to enable audio
+        setAudioEnabled(false);
+      });
     } else {
       audio.pause();
       audio.currentTime = 0;
     }
   }, [buzzerOn]);
 
+  // Check for alarms and set buzzer state
   useEffect(() => {
     const anyAlarm = rooms.some(room => {
       const thresholdAlarm =
@@ -64,11 +72,38 @@ export function RoomProvider({ children }) {
         room.alert_level && room.alert_level.toLowerCase() === "alert";
       return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
     });
+    
     setBuzzerOn(anyAlarm);
   }, [rooms]);
 
+  // Function to manually enable audio (called from header)
+  const enableAudio = () => {
+    setAudioEnabled(true);
+    // Try to play the buzzer if it should be on
+    if (buzzerOn && audioRef.current) {
+      audioRef.current.play().catch(console.error);
+    }
+  };
+
+  // Function to manually test buzzer
+  const testBuzzer = () => {
+    if (audioRef.current) {
+      audioRef.current.loop = false;
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(console.error);
+    }
+  };
+
   return (
-    <RoomContext.Provider value={{ rooms, setRooms, buzzerOn, setBuzzerOn }}>
+    <RoomContext.Provider value={{ 
+      rooms, 
+      setRooms, 
+      buzzerOn, 
+      setBuzzerOn, 
+      audioEnabled, 
+      enableAudio,
+      testBuzzer 
+    }}>
       <audio ref={audioRef} src="/buzzer.mp3" preload="auto" />
       {children}
     </RoomContext.Provider>

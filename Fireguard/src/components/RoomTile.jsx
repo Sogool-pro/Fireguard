@@ -8,15 +8,18 @@ import { ref, update } from "firebase/database";
 import { useRoomChartModal } from "../context/RoomChartModalContext";
 
 // Blinking Logic
-function getBlinkingClass({ alert_level, status, fire, temperature, smoke, carbonMonoxide }) {
+function getBlinkingClass({
+  alert_level,
+  status,
+  fire,
+  temperature,
+  smoke,
+  carbonMonoxide,
+}) {
   if (status !== "Active") return "";
   const thresholdAlarm =
-    fire ||
-    temperature > 50 ||
-    smoke > 800 ||
-    carbonMonoxide > 800;
-  const alertLevelAlarm =
-    alert_level && alert_level.toLowerCase() === "alert";
+    fire || temperature > 50 || smoke > 800 || carbonMonoxide > 800;
+  const alertLevelAlarm = alert_level && alert_level.toLowerCase() === "alert";
   if (thresholdAlarm || alertLevelAlarm) return "blink-red";
   return "";
 }
@@ -62,8 +65,8 @@ export default function RoomTile(props) {
 
   return (
     <div
-      className={`rounded-2xl shadow-md p-6 w-80 max-w-full transition-colors duration-300 cursor-pointer ${
-        blinkingClass ? blinkingClass : "bg-[#f6fbfc]"
+      className={`rounded-2xl shadow-md p-6 w-80 max-w-full transition-transform hover:-translate-y-1 transition-colors duration-300 cursor-pointer ${
+        blinkingClass ? blinkingClass : "bg-white"
       }`}
       onClick={() => showRoomChart(room)}
     >
@@ -75,7 +78,10 @@ export default function RoomTile(props) {
           </span>
         </div>
         <button
-          onClick={e => { e.stopPropagation(); handlePowerClick(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePowerClick();
+          }}
           className={`p-1 rounded-full transition-colors cursor-pointer ${
             room.status === "Active"
               ? "bg-green-100 hover:bg-green-200"
