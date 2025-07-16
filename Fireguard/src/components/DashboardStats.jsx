@@ -7,9 +7,9 @@ const stats = [
   {
     key: "totalRooms",
     label: "Total Rooms",
-    icon: <FaHome className="text-white text-lg" />,
-    iconBg: "bg-blue-500",
-    valueClass: "text-blue-700",
+    icon: <FaHome className="text-white text-lg " />,
+    iconBg: "bg-black",
+    valueClass: "text-black",
   },
   {
     key: "alertsToday",
@@ -34,7 +34,7 @@ export default function DashboardStats({
 }) {
   const values = { totalRooms, alertsToday, unacknowledgedAlerts };
   return (
-    <div className="bg-white rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className=" bg-white shadow-sm rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
       {stats.map((stat) => (
         <div
           key={stat.key}

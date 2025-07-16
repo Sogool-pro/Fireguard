@@ -19,8 +19,10 @@ function getBlinkingClass({
   if (status !== "Active") return "";
   const thresholdAlarm =
     fire || temperature > 50 || smoke > 800 || carbonMonoxide > 800;
-  const alertLevelAlarm = alert_level && alert_level.toLowerCase() === "alert";
-  if (thresholdAlarm || alertLevelAlarm) return "blink-red";
+  if (alert_level && alert_level.toLowerCase() === "warning")
+    return "blink-yellow";
+  if (thresholdAlarm || (alert_level && alert_level.toLowerCase() === "alert"))
+    return "blink-red";
   return "";
 }
 

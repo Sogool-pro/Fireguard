@@ -1,13 +1,98 @@
-import React, { useState } from "react";
-import { Bell, Search, User, Volume2, VolumeX, Bug } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, User } from "lucide-react";
 import { useRoom } from "../context/RoomContext";
+import { useNotification } from "../context/NotificationContext";
+import { db } from "../firebase";
+import { ref, onValue } from "firebase/database";
+import { useLocation } from "react-router-dom";
 
 export default function Header() {
-  const { buzzerOn, audioEnabled, rooms, testBuzzer, enableAudio } = useRoom();
+  const { rooms } = useRoom();
+  const { logsAlert, setLogsAlert } = useNotification();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [recentAlerts, setRecentAlerts] = useState([]);
+  const notifRef = useRef();
+  const buzzerAudioRef = useRef(null);
+  // Determine if buzzer should play: any unacknowledged alert or any blinking tile (active alert)
+  const shouldBuzzerPlay =
+    recentAlerts.some((a) => a.acknowledged === false) ||
+    rooms.some(
+      (room) =>
+        (room.fire ||
+          room.temperature > 50 ||
+          room.smoke > 800 ||
+          room.carbonMonoxide > 800 ||
+          (room.alert_level && room.alert_level.toLowerCase() === "alert")) &&
+        room.silenced !== true
+    );
+
+  // Play or stop buzzer.mp3 based on shouldBuzzerPlay
+  useEffect(() => {
+    if (!buzzerAudioRef.current) {
+      buzzerAudioRef.current = new Audio("/buzzer.mp3");
+      buzzerAudioRef.current.loop = true;
+    }
+    const audio = buzzerAudioRef.current;
+    if (shouldBuzzerPlay) {
+      audio.volume = 1.0;
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    // Pause on unmount
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [shouldBuzzerPlay]);
+
+  // Fetch last 10 alerts from Firebase
+  useEffect(() => {
+    const alertsRef = ref(db, "alerts");
+    const unsub = onValue(alertsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const alertsArr = Object.entries(data)
+        .map(([id, alert]) => ({ ...alert, id }))
+        .filter((alert) => alert && alert.timestamp)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 10);
+      setRecentAlerts(alertsArr);
+    });
+    return () => unsub();
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNotifications]);
+
+  // Helper: time ago
+  function timeAgo(dateString) {
+    if (!dateString) return "-";
+    const now = new Date();
+    const date = new Date(dateString.replace(/-/g, "/"));
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+    return date.toLocaleString();
+  }
   const [showDebug, setShowDebug] = useState(false);
+  const location = useLocation();
 
   // Count rooms with alarms
-  const alarmRooms = rooms.filter(room => {
+  const alarmRooms = rooms.filter((room) => {
     const thresholdAlarm =
       room.fire ||
       room.temperature > 50 ||
@@ -18,21 +103,14 @@ export default function Header() {
     return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
   });
 
-  // Simple audio test function
-  const testAudioFile = () => {
-    const audio = new Audio("/buzzer.mp3");
-    audio.addEventListener('canplaythrough', () => {
-      console.log("Audio file loaded successfully");
-      audio.play().then(() => {
-        console.log("Audio played successfully");
-      }).catch(error => {
-        console.error("Audio play failed:", error);
-      });
-    });
-    audio.addEventListener('error', (e) => {
-      console.error("Audio file error:", e);
-    });
+  const pageTitles = {
+    "/": "Dashboard",
+    "/logs": "Logs",
+    "/analytics": "Analytics",
+    "/users": "Users",
+    "/settings": "Settings",
   };
+  const pageTitle = pageTitles[location.pathname] || "Fireguard";
 
   return (
     <>
@@ -40,75 +118,98 @@ export default function Header() {
         {/* Search Bar */}
         <div className="flex items-center flex-1 max-w-xl">
           <div className="relative w-full">
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-indigo-500"
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">
+              {pageTitle}
+            </h1>
           </div>
         </div>
 
         {/* Right Side Icons */}
         <div className="flex items-center gap-4">
-          {/* Buzzer Status */}
-          <div className="flex items-center gap-2">
-            {audioEnabled ? (
-              <Volume2 
-                size={20} 
-                className={buzzerOn ? "text-red-500 animate-pulse" : "text-green-500"} 
-              />
-            ) : (
-              <VolumeX size={20} className="text-gray-400" />
-            )}
-            <span className="text-sm text-gray-600">
-              {audioEnabled ? (buzzerOn ? "Alarm Active" : "Audio Ready") : "Audio Disabled"}
-            </span>
-          </div>
-
-          {/* Enable Audio Button */}
-          {!audioEnabled && (
-            <button 
-              onClick={enableAudio}
-              className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-              title="Enable Audio"
-            >
-              Enable Audio
-            </button>
-          )}
-
-          {/* Test Buzzer Button */}
-          <button 
-            onClick={testBuzzer}
-            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-            title="Test Buzzer Sound"
-          >
-            Test Buzzer
-          </button>
-
-          {/* Test Audio File Button */}
-          <button 
-            onClick={testAudioFile}
-            className="px-3 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600"
-            title="Test Audio File"
-          >
-            Test File
-          </button>
-
-          {/* Debug Button */}
-          <button 
-            onClick={() => setShowDebug(!showDebug)}
-            className="p-2 hover:bg-gray-100 rounded-full"
-            title="Debug Buzzer"
-          >
-            <Bug size={20} className="text-gray-600" />
-          </button>
-
           {/* Notifications */}
-          <button className="relative p-2 hover:bg-gray-100 rounded-full">
-            <Bell size={20} className="text-gray-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              className="relative p-2 hover:bg-gray-100 rounded-full"
+              onClick={() => {
+                setShowNotifications((v) => !v);
+                setLogsAlert(false);
+              }}
+              aria-label="Show notifications"
+            >
+              <Bell size={20} className="text-gray-600" />
+              {logsAlert ||
+              recentAlerts.some((a) => a.acknowledged === false) ? (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              ) : null}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto animate-fade-in">
+                <div className="p-4 font-semibold text-black">
+                  Recent Alerts
+                </div>
+                {recentAlerts.length === 0 ? (
+                  <div className="p-4 text-gray-500 text-sm">
+                    No recent alerts.
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {recentAlerts.map((alert) => (
+                      <li
+                        key={alert.id}
+                        className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors
+                          ${
+                            // Bold if latest (first in list) or unacknowledged and not yet viewed
+                            (logsAlert && (recentAlerts[0]?.id === alert.id || alert.acknowledged === false))
+                              ? 'bg-white font-bold text-gray-900'
+                              : 'bg-gray-50 font-normal text-gray-400'
+                          }
+                        `}
+                      >
+                        <div
+                          className="flex-shrink-0 w-3 h-3 mt-1 rounded-full"
+                          style={{
+                            background:
+                              alert.acknowledged === false
+                                ? "#f87171"
+                                : "#a3e635",
+                          }}
+                          title={
+                            alert.acknowledged === false
+                              ? "Unacknowledged"
+                              : "Acknowledged"
+                          }
+                        ></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium">
+                              {alert.node
+                                ? `Room ${String(alert.node).replace("NODE", "")}`
+                                : "Unknown Room"}
+                            </div>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full border ml-2
+                                ${alert.acknowledged === false ? 'bg-red-100 text-red-600 border-red-300' : 'bg-green-100 text-green-700 border-green-300'}`}
+                            >
+                              {alert.acknowledged === false ? 'Unacknowledged' : 'Acknowledged'}
+                            </span>
+                          </div>
+                          <div className={`text-sm ${
+                            (logsAlert && (recentAlerts[0]?.id === alert.id || alert.acknowledged === false))
+                              ? 'text-gray-800' : 'text-gray-400'
+                          }`}>
+                            {alert.message || "-"}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {timeAgo(alert.timestamp)}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Profile */}
           <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg">
@@ -119,29 +220,6 @@ export default function Header() {
           </button>
         </div>
       </header>
-
-      {/* Debug Panel */}
-      {showDebug && (
-        <div className="fixed top-20 right-4 z-40 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-sm">
-          <h3 className="font-bold mb-2 text-sm">Buzzer Debug Info:</h3>
-          <div className="text-xs space-y-1">
-            <div>Audio Enabled: <span className={audioEnabled ? "text-green-600" : "text-red-600"}>{audioEnabled ? "Yes" : "No"}</span></div>
-            <div>Buzzer On: <span className={buzzerOn ? "text-red-600" : "text-gray-600"}>{buzzerOn ? "Yes" : "No"}</span></div>
-            <div>Alarm Rooms: {alarmRooms.length}</div>
-            <div>Total Rooms: {rooms.length}</div>
-            {alarmRooms.length > 0 && (
-              <div className="mt-2">
-                <div className="font-semibold">Alarm Rooms:</div>
-                {alarmRooms.map((room, idx) => (
-                  <div key={idx} className="ml-2 text-xs">
-                    {room.roomName} - {room.alert_message || "Threshold exceeded"}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 }

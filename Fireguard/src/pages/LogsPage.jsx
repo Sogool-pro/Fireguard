@@ -14,18 +14,44 @@ export default function LogsPage() {
         .map(([id, alert]) => ({
           ...alert,
           id,
-          date: alert.timestamp,
-          room: alert.node ? `ROOM NO. ${alert.node.replace("NODE", "")}` : "-",
-          alert: alert.message,
-          temperature: alert.temperature ? `${alert.temperature}°C` : "-",
-          humidity: alert.humidity ? `${alert.humidity}%` : "-",
-          flame: alert.flame === 1 ? "Detected" : "Not Detected",
-          smoke: alert.Gas_and_Smoke ? `${alert.Gas_and_Smoke} ppm` : "-",
-          carbonMonoxide: alert.carbon_monoxide
-            ? `${alert.carbon_monoxide} ppm`
-            : "-",
+          date: alert && alert.timestamp ? alert.timestamp : "-",
+          room:
+            alert && alert.node
+              ? `ROOM NO. ${String(alert.node).replace("NODE", "")}`
+              : "-",
+          alert: alert && alert.message ? alert.message : "-",
+          temperature:
+            alert &&
+            alert.temperature !== undefined &&
+            alert.temperature !== null
+              ? `${alert.temperature}°C`
+              : "-",
+          humidity:
+            alert && alert.humidity !== undefined && alert.humidity !== null
+              ? `${alert.humidity}%`
+              : "-",
+          flame: alert && alert.flame === 1 ? "Detected" : "Not Detected",
+          smoke:
+            alert &&
+            alert.Gas_and_Smoke !== undefined &&
+            alert.Gas_and_Smoke !== null
+              ? `${alert.Gas_and_Smoke} ppm`
+              : "-",
+          carbonMonoxide:
+            alert &&
+            alert.carbon_monoxide !== undefined &&
+            alert.carbon_monoxide !== null
+              ? `${alert.carbon_monoxide} ppm`
+              : "-",
         }))
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        .filter(
+          (log) =>
+            log.date !== "-" &&
+            log.date !== undefined &&
+            log.date !== null &&
+            log.date !== ""
+        )
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
       setLogs(logsArr);
     });
     return () => unsub();
@@ -33,7 +59,6 @@ export default function LogsPage() {
 
   return (
     <div className="p-4 ml-5">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Logs</h1>
       <LogsTable logs={logs} />
     </div>
   );

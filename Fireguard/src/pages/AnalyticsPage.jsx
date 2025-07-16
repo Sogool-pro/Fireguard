@@ -111,7 +111,9 @@ function getRoomData(alerts) {
 
 // Helper: Severity breakdown (improved logic using level/alert_level)
 function getSeverityData(alerts) {
-  let Normal = 0, Warning = 0, Alert = 0;
+  let Normal = 0,
+    Warning = 0,
+    Alert = 0;
   alerts.forEach((alert) => {
     const level = (alert.level || alert.alert_level || "").toLowerCase();
     if (level === "normal") Normal++;
@@ -196,18 +198,23 @@ function getRecentSensorData(alerts) {
 function getRoomSeverityData(alerts) {
   const roomMap = {};
   alerts.forEach((alert) => {
-    const room = alert.node ? `Room ${alert.node.replace("NODE", "")}` : "Unknown";
+    const room = alert.node
+      ? `Room ${alert.node.replace("NODE", "")}`
+      : "Unknown";
     const level = (alert.level || alert.alert_level || "").toLowerCase();
-    if (!roomMap[room]) roomMap[room] = { room, Normal: 0, Warning: 0, Alert: 0 };
-    if (level === "normal") roomMap[room].Normal++;
-    else if (level === "warning") roomMap[room].Warning++;
+    if (!roomMap[room]) roomMap[room] = { room, Warning: 0, Alert: 0 };
+    if (level === "warning") roomMap[room].Warning++;
     else if (level === "alert") roomMap[room].Alert++;
   });
   return Object.values(roomMap);
 }
 
 function getSensorBreakdownData(alerts) {
-  let CO = 0, Smoke = 0, Flame = 0, Temp = 0, Humidity = 0;
+  let CO = 0,
+    Smoke = 0,
+    Flame = 0,
+    Temp = 0,
+    Humidity = 0;
   alerts.forEach((alert) => {
     const msg = (alert.message || "").toLowerCase();
     if (msg.includes("co")) CO++;
@@ -227,26 +234,39 @@ function getSensorBreakdownData(alerts) {
 
 function getAlertTrendsData(alerts) {
   const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   const result = Array.from({ length: 12 }, (_, i) => ({
-    month: months[i], Normal: 0, Warning: 0, Alert: 0
+    month: months[i],
+    Warning: 0,
+    Alert: 0,
   }));
   alerts.forEach((alert) => {
-    const date = alert.timestamp ? new Date(alert.timestamp.replace(" ", "T")) : null;
+    const date = alert.timestamp
+      ? new Date(alert.timestamp.replace(" ", "T"))
+      : null;
     if (!date) return;
     const m = date.getMonth();
     const level = (alert.level || alert.alert_level || "").toLowerCase();
-    if (level === "normal") result[m].Normal++;
-    else if (level === "warning") result[m].Warning++;
+    if (level === "warning") result[m].Warning++;
     else if (level === "alert") result[m].Alert++;
   });
   return result;
 }
 
 function getUnacknowledgedCount(alerts) {
-  return alerts.filter(alert => alert.acknowledged === false).length;
+  return alerts.filter((alert) => alert.acknowledged === false).length;
 }
 
 const COLORS = ["#2563eb", "#facc15", "#f87171", "#34d399", "#a78bfa"];
@@ -282,11 +302,11 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-4 space-y-6">
-      {/* Alert Trends, Monthly Sensor Alerts & Unacknowledged Alerts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Alert Trends & Monthly Sensor Alerts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Alert Trends */}
         <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Alert Trends</h2>
+          <h2 className="text-lg font-bold mb-2">Alarm Trends</h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={alertTrendsData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -294,32 +314,57 @@ export default function AnalyticsPage() {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="Normal" stroke="#34d399" strokeWidth={3} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="Warning" stroke="#facc15" strokeWidth={3} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="Alert" stroke="#f87171" strokeWidth={3} dot={{ r: 4 }} />
+              {/* Removed Normal line */}
+              <Line
+                type="monotone"
+                dataKey="Warning"
+                stroke="#facc15"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="Alert"
+                stroke="#f87171"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
         {/* Monthly Sensor Alerts */}
-      <div className="bg-white rounded-xl shadow p-4">
-        <h2 className="text-lg font-bold mb-2">Monthly Sensor Alerts</h2>
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="text-lg font-bold mb-2">Monthly Sensor Alarms</h2>
           <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={monthlyData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Legend />
-              <Line type="monotone" dataKey="CO" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="Smoke" stroke="#facc15" strokeWidth={3} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="Flame" stroke="#f87171" strokeWidth={3} dot={{ r: 4 }} />
-          </LineChart>
-        </ResponsiveContainer>
-        </div>
-        {/* Unacknowledged Alerts */}
-        <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center justify-center">
-          <h2 className="text-lg font-bold mb-2">Unacknowledged Alerts</h2>
-          <p className="text-4xl font-bold text-red-500">{unacknowledgedCount}</p>
+            <LineChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="CO"
+                stroke="#2563eb"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="Smoke"
+                stroke="#facc15"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="Flame"
+                stroke="#f87171"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -327,7 +372,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Alert Source Bar Chart */}
         <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Alert Source Breakdown</h2>
+          <h2 className="text-lg font-bold mb-2">Alarm Source Breakdown</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={alertTypeData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -344,7 +389,7 @@ export default function AnalyticsPage() {
         </div>
         {/* Room Distribution Pie Chart */}
         <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Room Alert Distribution</h2>
+          <h2 className="text-lg font-bold mb-2">Room Alarm Distribution</h2>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
@@ -372,7 +417,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Alert Severity Breakdown */}
         <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Alert Severity Breakdown</h2>
+          <h2 className="text-lg font-bold mb-2">Alarm Severity Breakdown</h2>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
@@ -423,7 +468,7 @@ export default function AnalyticsPage() {
         {/* Room Comparison */}
         <div className="bg-white rounded-xl shadow p-4">
           <h2 className="text-lg font-bold mb-2">
-            Room Comparison (Total Alerts)
+            Room Comparison (Total Alarms)
           </h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={roomComparisonData}>
@@ -511,7 +556,7 @@ export default function AnalyticsPage() {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Normal" stackId="a" fill="#34d399" />
+              {/* Removed Normal bar */}
               <Bar dataKey="Warning" stackId="a" fill="#facc15" />
               <Bar dataKey="Alert" stackId="a" fill="#f87171" />
             </BarChart>
