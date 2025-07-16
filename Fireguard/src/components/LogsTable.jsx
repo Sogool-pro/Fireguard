@@ -7,16 +7,29 @@ import { ref, update } from "firebase/database";
 
 // Helper to format date as 'MAR 5 2025 9:00 pm'
 function formatLogDate(dateStr) {
-  if (!dateStr) return '';
+  if (!dateStr) return "";
   const date = new Date(dateStr);
   if (isNaN(date)) return dateStr;
-  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const months = [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+  ];
   const month = months[date.getMonth()];
   const day = date.getDate();
   const year = date.getFullYear();
   let hour = date.getHours();
-  const min = date.getMinutes().toString().padStart(2, '0');
-  const ampm = hour >= 12 ? 'pm' : 'am';
+  const min = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hour >= 12 ? "pm" : "am";
   hour = hour % 12;
   hour = hour ? hour : 12;
   return `${month} ${day} ${year} ${hour}:${min} ${ampm}`;
@@ -79,7 +92,7 @@ export default function LogsTable({ logs }) {
           "Flame Sensor",
           "Smoke Level",
           "CO Level",
-          "Acknowledge"
+          "Acknowledge",
         ],
       ],
       body: filteredLogs.map((log) => [
@@ -91,7 +104,7 @@ export default function LogsTable({ logs }) {
         log.flame,
         log.smoke,
         log.carbonMonoxide,
-        log.acknowledged ? "✔" : ""
+        log.acknowledged ? "✔" : "",
       ]),
       startY: 18,
       styles: { fontSize: 8 },
@@ -103,7 +116,8 @@ export default function LogsTable({ logs }) {
   // Acknowledge handler
   const handleAcknowledge = (log) => {
     if (!log.id) return;
-    if (!window.confirm("Are you sure you want to acknowledge this alert?")) return;
+    if (!window.confirm("Are you sure you want to acknowledge this alert?"))
+      return;
     // Update the alert in Firebase
     update(ref(db, `alerts/${log.id}`), { acknowledged: true });
   };
@@ -137,7 +151,7 @@ export default function LogsTable({ logs }) {
                 Room
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Alert
+                Alarm
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">
                 Temperature

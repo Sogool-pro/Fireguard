@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { FaExclamationTriangle } from "react-icons/fa";
 import { Bell, User } from "lucide-react";
 import { useRoom } from "../context/RoomContext";
 import { useNotification } from "../context/NotificationContext";
@@ -118,7 +119,7 @@ export default function Header() {
         {/* Search Bar */}
         <div className="flex items-center flex-1 max-w-xl">
           <div className="relative w-full">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2 ml-4">
               {pageTitle}
             </h1>
           </div>
@@ -158,29 +159,46 @@ export default function Header() {
                         key={alert.id}
                         className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors
                           ${
-                            // Bold if latest (first in list) or unacknowledged and not yet viewed
-                            logsAlert &&
-                            (recentAlerts[0]?.id === alert.id ||
-                              alert.acknowledged === false)
+                            alert.acknowledged === false
                               ? "bg-white font-bold text-gray-900"
                               : "bg-gray-50 font-normal text-gray-400"
                           }
                         `}
                       >
-                        <div
-                          className="flex-shrink-0 w-3 h-3 mt-1 rounded-full"
-                          style={{
-                            background:
-                              alert.acknowledged === false
-                                ? "#f87171"
-                                : "#a3e635",
-                          }}
-                          title={
-                            alert.acknowledged === false
-                              ? "Unacknowledged"
-                              : "Acknowledged"
-                          }
-                        ></div>
+                        <div className="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center">
+                          {(() => {
+                            const level = (
+                              alert.alert_level || ""
+                            ).toLowerCase();
+                            const msg = (alert.message || "").toLowerCase();
+                            if (
+                              level === "alert" ||
+                              msg.includes("alert") ||
+                              msg.includes("flame")
+                            ) {
+                              return (
+                                <FaExclamationTriangle
+                                  className="w-7 h-7"
+                                  color="#f87171"
+                                  title="Alert"
+                                />
+                              );
+                            } else if (
+                              level === "warning" ||
+                              msg.includes("warning")
+                            ) {
+                              return (
+                                <FaExclamationTriangle
+                                  className="w-7 h-7"
+                                  color="#facc15"
+                                  title="Warning"
+                                />
+                              );
+                            } else {
+                              return null;
+                            }
+                          })()}
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <div className="font-medium">

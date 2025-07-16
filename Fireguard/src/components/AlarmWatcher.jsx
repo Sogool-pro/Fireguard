@@ -4,6 +4,21 @@ import { useAlarmModal } from "../context/AlarmModalContext";
 import { useRef, useEffect } from "react";
 
 function getAlarmMessage(room) {
+  // Do not show modal if alert_level or alert_message is 'Normal' or 'Normal condition'
+  const alertLevel = room.alert_level
+    ? String(room.alert_level).toLowerCase()
+    : "";
+  const alertMsg = room.alert_message
+    ? String(room.alert_message).toLowerCase()
+    : "";
+  if (
+    alertLevel === "normal" ||
+    alertLevel === "normal condition" ||
+    alertMsg === "normal" ||
+    alertMsg === "normal condition"
+  ) {
+    return null;
+  }
   if (room.alert_message && room.alert_message !== "Normal") {
     return `${room.alert_message} (Room: ${room.roomName})`;
   }

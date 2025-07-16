@@ -111,17 +111,14 @@ function getRoomData(alerts) {
 
 // Helper: Severity breakdown (improved logic using level/alert_level)
 function getSeverityData(alerts) {
-  let Normal = 0,
-    Warning = 0,
+  let Warning = 0,
     Alert = 0;
   alerts.forEach((alert) => {
     const level = (alert.level || alert.alert_level || "").toLowerCase();
-    if (level === "normal") Normal++;
-    else if (level === "warning") Warning++;
+    if (level === "warning") Warning++;
     else if (level === "alert") Alert++;
   });
   return [
-    { name: "Normal", value: Normal },
     { name: "Warning", value: Warning },
     { name: "Alert", value: Alert },
   ];
@@ -430,8 +427,17 @@ export default function AnalyticsPage() {
                 innerRadius={40}
                 label
               >
-                {severityData.map((entry, idx) => (
-                  <Cell key={entry.name} fill={COLORS[idx % COLORS.length]} />
+                {severityData.map((entry) => (
+                  <Cell
+                    key={entry.name}
+                    fill={
+                      entry.name === "Warning"
+                        ? "#facc15"
+                        : entry.name === "Alert"
+                        ? "#f87171"
+                        : COLORS[0]
+                    }
+                  />
                 ))}
               </Pie>
               <Legend />
