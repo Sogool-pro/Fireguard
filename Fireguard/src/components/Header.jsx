@@ -159,9 +159,11 @@ export default function Header() {
                         className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors
                           ${
                             // Bold if latest (first in list) or unacknowledged and not yet viewed
-                            (logsAlert && (recentAlerts[0]?.id === alert.id || alert.acknowledged === false))
-                              ? 'bg-white font-bold text-gray-900'
-                              : 'bg-gray-50 font-normal text-gray-400'
+                            logsAlert &&
+                            (recentAlerts[0]?.id === alert.id ||
+                              alert.acknowledged === false)
+                              ? "bg-white font-bold text-gray-900"
+                              : "bg-gray-50 font-normal text-gray-400"
                           }
                         `}
                       >
@@ -183,20 +185,34 @@ export default function Header() {
                           <div className="flex items-center gap-2">
                             <div className="font-medium">
                               {alert.node
-                                ? `Room ${String(alert.node).replace("NODE", "")}`
+                                ? `Room ${String(alert.node).replace(
+                                    "NODE",
+                                    ""
+                                  )}`
                                 : "Unknown Room"}
                             </div>
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full border ml-2
-                                ${alert.acknowledged === false ? 'bg-red-100 text-red-600 border-red-300' : 'bg-green-100 text-green-700 border-green-300'}`}
+                                ${
+                                  alert.acknowledged === false
+                                    ? "bg-red-100 text-red-600 border-red-300"
+                                    : "bg-green-100 text-green-700 border-green-300"
+                                }`}
                             >
-                              {alert.acknowledged === false ? 'Unacknowledged' : 'Acknowledged'}
+                              {alert.acknowledged === false
+                                ? "Unacknowledged"
+                                : "Acknowledged"}
                             </span>
                           </div>
-                          <div className={`text-sm ${
-                            (logsAlert && (recentAlerts[0]?.id === alert.id || alert.acknowledged === false))
-                              ? 'text-gray-800' : 'text-gray-400'
-                          }`}>
+                          <div
+                            className={`text-sm ${
+                              logsAlert &&
+                              (recentAlerts[0]?.id === alert.id ||
+                                alert.acknowledged === false)
+                                ? "text-gray-800"
+                                : "text-gray-400"
+                            }`}
+                          >
                             {alert.message || "-"}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
