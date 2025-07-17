@@ -5,5 +5,5 @@ import react from "@vitejs/plugin-react";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/Fireguard/', // <-- add this line
+  base: process.env.VITE_BASE_PATH || "/Fireguard/", // <-- add this line
 });
