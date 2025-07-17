@@ -1,2 +1,0 @@
-# Fireguard
-for revamp
