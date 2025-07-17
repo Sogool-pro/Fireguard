@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
 import { db } from "../firebase";
 import { ref, onValue } from "firebase/database";
-
+import buzzer from "../public/buzzer.mp3";
 const RoomContext = createContext();
 
 export function useRoom() {
@@ -45,11 +51,11 @@ export function RoomProvider({ children }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    
+
     if (buzzerOn) {
       audio.loop = true;
       audio.currentTime = 0;
-      audio.play().catch(error => {
+      audio.play().catch((error) => {
         console.log("Buzzer play failed:", error);
         // If autoplay fails, try to enable audio
         setAudioEnabled(false);
@@ -62,7 +68,7 @@ export function RoomProvider({ children }) {
 
   // Check for alarms and set buzzer state
   useEffect(() => {
-    const anyAlarm = rooms.some(room => {
+    const anyAlarm = rooms.some((room) => {
       const thresholdAlarm =
         room.fire ||
         room.temperature > 50 ||
@@ -72,7 +78,7 @@ export function RoomProvider({ children }) {
         room.alert_level && room.alert_level.toLowerCase() === "alert";
       return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
     });
-    
+
     setBuzzerOn(anyAlarm);
   }, [rooms]);
 
@@ -95,16 +101,18 @@ export function RoomProvider({ children }) {
   };
 
   return (
-    <RoomContext.Provider value={{ 
-      rooms, 
-      setRooms, 
-      buzzerOn, 
-      setBuzzerOn, 
-      audioEnabled, 
-      enableAudio,
-      testBuzzer 
-    }}>
-      <audio ref={audioRef} src="/buzzer.mp3" preload="auto" />
+    <RoomContext.Provider
+      value={{
+        rooms,
+        setRooms,
+        buzzerOn,
+        setBuzzerOn,
+        audioEnabled,
+        enableAudio,
+        testBuzzer,
+      }}
+    >
+      <audio ref={audioRef} src={buzzer} preload="auto" />
       {children}
     </RoomContext.Provider>
   );
