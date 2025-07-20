@@ -1,4 +1,5 @@
 import React, { useState, createContext, useContext } from "react";
+import { useAuth } from "../context/AuthContext";
 import { Link, useLocation } from "react-router-dom";
 import {
   PanelLeftOpen,
@@ -20,6 +21,7 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const location = useLocation();
   const { dashboardAlert, logsAlert } = useNotification();
+  const { user } = useAuth();
 
   const navItems = [
     {
@@ -110,8 +112,10 @@ export default function Sidebar() {
             }`}
           >
             <div className="leading-4">
-              <h4 className="font-semibold">John Doe</h4>
-              <span className="text-xs text-gray-600">johndoe@gmail.com</span>
+              <h4 className="font-semibold">
+                {user?.displayName || user?.email?.split("@")[0] || "User"}
+              </h4>
+              <span className="text-xs text-gray-600">{user?.email || ""}</span>
             </div>
             <MoreVertical size={15} />
           </div>
