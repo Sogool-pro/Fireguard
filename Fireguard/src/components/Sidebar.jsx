@@ -58,6 +58,9 @@ export default function Sidebar() {
     },
   ];
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { signOut } = useAuth();
+
   return (
     <aside
       className={`h-screen transition-all duration-300 ease-in-out ${
@@ -104,7 +107,7 @@ export default function Sidebar() {
           </ul>
         </SidebarContext.Provider>
 
-        <div className="flex p-3">
+        <div className="flex p-3 relative">
           <img src={Occupied} alt="" className="w-7 h-7 rounded-md" />
           <div
             className={`flex justify-between items-center overflow-hidden transition-all duration-300 ease-in-out ${
@@ -117,8 +120,38 @@ export default function Sidebar() {
               </h4>
               <span className="text-xs text-gray-600">{user?.email || ""}</span>
             </div>
-            <MoreVertical size={15} />
+            <button
+              className="p-1 rounded-full hover:bg-gray-200"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MoreVertical size={15} />
+            </button>
           </div>
+          {/* Popup menu */}
+          {menuOpen && (
+            <div className="absolute bottom-12 right-0 w-50 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-2 flex flex-col">
+              <button
+                className="flex items-center gap-2 px-4 py-1 text-gray-800 hover:bg-gray-100 rounded"
+                onClick={() => {
+                  setMenuOpen(false);
+                  signOut();
+                }}
+              >
+                {/* Logout icon */}
+                <svg
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1" />
+                </svg>
+                <span>Log out</span>
+              </button>
+            </div>
+          )}
         </div>
       </nav>
     </aside>
