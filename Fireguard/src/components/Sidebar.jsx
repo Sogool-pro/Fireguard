@@ -127,32 +127,40 @@ export default function Sidebar() {
 
 function SidebarItem({ icon, text, to, active, alert }) {
   const { expanded } = useContext(SidebarContext);
+  const [hovered, setHovered] = useState(false);
 
   return (
     <li className="mb-1">
       <Link
         to={to}
-        className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-all duration-300 ease-in-out ${
+        className={`relative flex items-center py-2 px-4 my-1 font-medium rounded-md cursor-pointer transition-all duration-300 ease-in-out ${
           active
             ? "bg-gradient-to-tr from-indigo-200 to-indigo-100 text-indigo-800"
             : "hover:bg-indigo-50 text-gray-600"
         }`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
         <div className="min-w-[20px]">{icon}</div>
-        <span
-          className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            expanded ? "w-52 ml-3 opacity-100" : "w-0 opacity-0"
-          }`}
-        >
-          {text}
-        </span>
-        {alert && (
-          <div
-            className={`absolute right-2 w-2 h-2 rounded bg-red-500 ${
-              expanded ? "" : "right-1 top-2"
-            }`}
-          />
+        {/* Expanded: show text inline. Collapsed: show tooltip on hover. */}
+        {expanded ? (
+          <span className="overflow-hidden transition-all duration-300 ease-in-out w-52 ml-3 opacity-100">
+            {text}
+          </span>
+        ) : (
+          hovered && (
+            <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-md shadow-lg z-10 whitespace-nowrap border border-gray-200">
+              {text}
+            </span>
+          )
         )}
+        {/* Alert dot: on top of icon when collapsed, at side when expanded */}
+        {alert &&
+          (expanded ? (
+            <div className="absolute right-2 w-2 h-2 rounded bg-red-500" />
+          ) : (
+            <div className="absolute top-2 left-2/3 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 z-20" />
+          ))}
       </Link>
     </li>
   );
