@@ -43,9 +43,14 @@ export default function Dashboard() {
         alertsToday={alertsToday}
         unacknowledgedAlerts={unacknowledgedAlerts}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex flex-wrap justify-center gap-6 px-4">
         {rooms.map((room, idx) => (
-          <RoomTile key={idx} roomIndex={idx} {...room} />
+          <div
+            key={idx}
+            className="flex justify-center flex-grow flex-shrink basis-[240px] max-w-[320px]"
+          >
+            <RoomTile roomIndex={idx} {...room} />
+          </div>
         ))}
       </div>
       {/* Legend Footer - Fixed Bottom */}

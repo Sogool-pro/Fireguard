@@ -67,7 +67,7 @@ export default function RoomTile(props) {
 
   return (
     <div
-      className={`rounded-2xl shadow-md p-6 w-80 max-w-full transition-transform hover:-translate-y-1 transition-colors duration-300 cursor-pointer ${
+      className={`rounded-2xl shadow-md p-6 w-full max-w-full transition duration-300 transform hover:-translate-y-1 cursor-pointer ${
         blinkingClass ? blinkingClass : "bg-white"
       }`}
       onClick={() => showRoomChart(room)}

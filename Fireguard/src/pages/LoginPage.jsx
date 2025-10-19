@@ -33,9 +33,9 @@ export default function LoginPage() {
           />
         </div>
         {/* Right form */}
-        <div className="w-1/2 bg-red-600 flex flex-col justify-center items-center py-10 px-8">
+        <div className="w-1/2 bg-white flex flex-col justify-center items-center py-10 px-8">
           <img src={fireguardLogo} alt="Fireguard Logo" className="w-30 mb-2" />
-          <h1 className="text-3xl font-bold text-white mb-6 tracking-wide">
+          <h1 className="text-3xl font-bold text-red-500 mb-6 tracking-wide">
             FIREGUARD
           </h1>
           <form className="w-full flex flex-col gap-4" onSubmit={handleLogin}>
