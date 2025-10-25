@@ -74,8 +74,8 @@ export default function RoomTile(props) {
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-2">
-          <FaHome className="text-3xl text-gray-800" />
-          <span className="text-2xl font-bold text-gray-800">
+          <FaHome className="text-2xl md:text-3xl text-gray-800" />
+          <span className="text-xl md:text-2xl font-bold text-gray-800">
             {room.roomName}
           </span>
         </div>
@@ -140,8 +140,12 @@ export default function RoomTile(props) {
       </div>
       <hr className="my-2 border-gray-300" />
       <div className="flex justify-between items-center pt-2">
-        <span className="text-lg font-semibold text-gray-700">Status</span>
-        <span className="text-lg font-bold text-gray-800">{room.status}</span>
+        <span className="text-sm md:text-lg font-semibold text-gray-700">
+          Status
+        </span>
+        <span className="text-sm md:text-lg font-bold text-gray-800">
+          {room.status}
+        </span>
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="p-4 ml-5 flex flex-col min-h-screen">
+    <div className="p-4 md:ml-5 flex flex-col min-h-screen text-sm md:text-base">
       <DashboardStats
         totalRooms={rooms.length}
         alertsToday={alertsToday}
