@@ -61,100 +61,133 @@ export default function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { signOut } = useAuth();
 
+  // Expose sidebar state via body class and dispatch events so other components
+  // (like Header) can react to sidebar open/close on mobile.
+  React.useEffect(() => {
+    try {
+      if (expanded) {
+        document.body.classList.add("sidebar-expanded");
+      } else {
+        document.body.classList.remove("sidebar-expanded");
+      }
+    } catch (e) {}
+    // notify listeners
+    window.dispatchEvent(new CustomEvent("sidebar:toggle", { detail: expanded }));
+  }, [expanded]);
+
+  // Listen for external requests to close the sidebar (used by Header when opening mobile notifications)
+  React.useEffect(() => {
+    const handler = () => setExpanded(false);
+    window.addEventListener("sidebar:close", handler);
+    return () => window.removeEventListener("sidebar:close", handler);
+  }, []);
+
   return (
-    <aside
-      className={`h-screen transition-all duration-300 ease-in-out ${
-        expanded ? "w-64" : "w-20"
-      }`}
-    >
-      <nav className="h-full flex flex-col bg-blue-50 border-r-blue-50 shadow-stone-300">
-        <div className="p-4 pb-2 flex justify-between items-center relative">
-          <img
-            src={FireguardImg}
-            className={`transition-all duration-300 ease-in-out ${
-              expanded ? "w-50" : "w-20"
-            }`}
-            alt="Fireguard Logo"
-          />
-          <button
-            onClick={() => setExpanded((curr) => !curr)}
-            className={`transition-all duration-300 cursor-pointer ease-in-out p-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 ${
-              expanded
-                ? "absolute -left-2 mt-10 ml-62"
-                : "absolute -left-2 mt-10 ml-19"
-            }`}
-          >
-            {expanded ? (
-              <PanelLeftClose size={20} className="text-white" />
-            ) : (
-              <PanelLeftOpen size={20} className="text-white" />
-            )}
-          </button>
-        </div>
-
-        <SidebarContext.Provider value={{ expanded }}>
-          <ul className="flex-1 px-3">
-            {navItems.map((item) => (
-              <SidebarItem
-                key={item.path}
-                icon={item.icon}
-                text={item.text}
-                to={item.path}
-                active={item.active}
-                alert={item.alert}
-              />
-            ))}
-          </ul>
-        </SidebarContext.Provider>
-
-        <div className="flex p-3 relative">
-          <img src={Occupied} alt="" className="w-7 h-7 rounded-md" />
-          <div
-            className={`flex justify-between items-center overflow-hidden transition-all duration-300 ease-in-out ${
-              expanded ? "w-52 ml-3 opacity-100" : "w-0 opacity-0"
-            }`}
-          >
-            <div className="leading-4">
-              <h4 className="font-semibold">
-                {user?.displayName || user?.email?.split("@")[0] || "User"}
-              </h4>
-              <span className="text-xs text-gray-600">{user?.email || ""}</span>
-            </div>
+    <>
+      {/* Backdrop for mobile when sidebar is expanded */}
+      {expanded && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setExpanded(false)}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={`h-screen transition-all duration-300 ease-in-out ${
+          expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative"
+        } ${expanded ? "w-64" : "w-20"}`}
+      >
+        <nav className="h-full flex flex-col bg-blue-50 border-r-blue-50 shadow-stone-300">
+          <div className="p-4 pb-2 flex justify-between items-center relative">
+            <img
+              src={FireguardImg}
+              className={`transition-all duration-300 ease-in-out ${
+                expanded ? "w-50" : "w-20"
+              }`}
+              alt="Fireguard Logo"
+            />
             <button
-              className="p-1 rounded-full hover:bg-gray-200"
-              onClick={() => setMenuOpen((open) => !open)}
+              onClick={() => setExpanded((curr) => !curr)}
+              className={`transition-all duration-300 cursor-pointer ease-in-out p-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 ${
+                expanded
+                  ? "absolute -left-2 mt-10 ml-62"
+                  : "absolute -left-2 mt-10 ml-19"
+              }`}
             >
-              <MoreVertical size={15} />
+              {expanded ? (
+                <PanelLeftClose size={20} className="text-white" />
+              ) : (
+                <PanelLeftOpen size={20} className="text-white" />
+              )}
             </button>
           </div>
-          {/* Popup menu */}
-          {menuOpen && (
-            <div className="absolute bottom-12 right-0 w-50 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-2 flex flex-col">
+
+          <SidebarContext.Provider value={{ expanded }}>
+            <ul className="flex-1 px-3">
+              {navItems.map((item) => (
+                <SidebarItem
+                  key={item.path}
+                  icon={item.icon}
+                  text={item.text}
+                  to={item.path}
+                  active={item.active}
+                  alert={item.alert}
+                />
+              ))}
+            </ul>
+          </SidebarContext.Provider>
+
+          <div className="flex p-3 relative">
+            <img src={Occupied} alt="" className="w-7 h-7 rounded-md" />
+            <div
+              className={`flex justify-between items-center overflow-hidden transition-all duration-300 ease-in-out ${
+                expanded ? "w-52 ml-3 opacity-100" : "w-0 opacity-0"
+              }`}
+            >
+              <div className="leading-4">
+                <h4 className="font-semibold">
+                  {user?.displayName || user?.email?.split("@")[0] || "User"}
+                </h4>
+                <span className="text-xs text-gray-600">
+                  {user?.email || ""}
+                </span>
+              </div>
               <button
-                className="flex items-center gap-2 px-4 py-1 text-gray-800 hover:bg-gray-100 rounded"
-                onClick={() => {
-                  setMenuOpen(false);
-                  signOut();
-                }}
+                className="p-1 rounded-full hover:bg-gray-200"
+                onClick={() => setMenuOpen((open) => !open)}
               >
-                {/* Logout icon */}
-                <svg
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1" />
-                </svg>
-                <span>Log out</span>
+                <MoreVertical size={15} />
               </button>
             </div>
-          )}
-        </div>
-      </nav>
-    </aside>
+            {/* Popup menu */}
+            {menuOpen && (
+              <div className="absolute bottom-12 right-0 w-50 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-2 flex flex-col">
+                <button
+                  className="flex items-center gap-2 px-4 py-1 text-gray-800 hover:bg-gray-100 rounded"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    signOut();
+                  }}
+                >
+                  {/* Logout icon */}
+                  <svg
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  <span>Log out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </nav>
+      </aside>
+    </>
   );
 }
 

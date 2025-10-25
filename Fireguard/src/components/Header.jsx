@@ -144,104 +144,203 @@ export default function Header() {
               ) : null}
             </button>
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto animate-fade-in">
-                <div className="p-4 font-semibold text-black">
-                  Recent Alerts
-                </div>
-                {recentAlerts.length === 0 ? (
-                  <div className="p-4 text-gray-500 text-sm">
-                    No recent alerts.
+              <>
+                {/* Desktop dropdown (keeps existing absolute behavior for md+ screens) */}
+                <div className="hidden md:block absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto animate-fade-in">
+                  <div className="p-4 font-semibold text-black">
+                    Recent Alerts
                   </div>
-                ) : (
-                  <ul className="divide-y divide-gray-100">
-                    {recentAlerts.map((alert) => (
-                      <li
-                        key={alert.id}
-                        className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors
-                          ${
-                            alert.acknowledged === false
-                              ? "bg-white font-bold text-gray-900"
-                              : "bg-gray-50 font-normal text-gray-400"
-                          }
-                        `}
-                      >
-                        <div className="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center">
-                          {(() => {
-                            const level = (
-                              alert.alert_level || ""
-                            ).toLowerCase();
-                            const msg = (alert.message || "").toLowerCase();
-                            if (
-                              level === "alert" ||
-                              msg.includes("alert") ||
-                              msg.includes("flame")
-                            ) {
-                              return (
-                                <FaExclamationTriangle
-                                  className="w-7 h-7"
-                                  color="#f87171"
-                                  title="Alert"
-                                />
-                              );
-                            } else if (
-                              level === "warning" ||
-                              msg.includes("warning")
-                            ) {
-                              return (
-                                <FaExclamationTriangle
-                                  className="w-7 h-7"
-                                  color="#facc15"
-                                  title="Warning"
-                                />
-                              );
-                            } else {
-                              return null;
+                  {recentAlerts.length === 0 ? (
+                    <div className="p-4 text-gray-500 text-sm">
+                      No recent alerts.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-100">
+                      {recentAlerts.map((alert) => (
+                        <li
+                          key={alert.id}
+                          className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors
+                            ${
+                              alert.acknowledged === false
+                                ? "bg-white font-bold text-gray-900"
+                                : "bg-gray-50 font-normal text-gray-400"
                             }
-                          })()}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium">
-                              {alert.node
-                                ? `Room ${String(alert.node).replace(
-                                    "NODE",
-                                    ""
-                                  )}`
-                                : "Unknown Room"}
-                            </div>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full border ml-2
-                                ${
+                          `}
+                        >
+                          <div className="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center">
+                            {(() => {
+                              const level = (
+                                alert.alert_level || ""
+                              ).toLowerCase();
+                              const msg = (alert.message || "").toLowerCase();
+                              if (
+                                level === "alert" ||
+                                msg.includes("alert") ||
+                                msg.includes("flame")
+                              ) {
+                                return (
+                                  <FaExclamationTriangle
+                                    className="w-7 h-7"
+                                    color="#f87171"
+                                    title="Alert"
+                                  />
+                                );
+                              } else if (
+                                level === "warning" ||
+                                msg.includes("warning")
+                              ) {
+                                return (
+                                  <FaExclamationTriangle
+                                    className="w-7 h-7"
+                                    color="#facc15"
+                                    title="Warning"
+                                  />
+                                );
+                              } else {
+                                return null;
+                              }
+                            })()}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium">
+                                {alert.node
+                                  ? `Room ${String(alert.node).replace(
+                                      "NODE",
+                                      ""
+                                    )}`
+                                  : "Unknown Room"}
+                              </div>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full border ml-2 ${
                                   alert.acknowledged === false
                                     ? "bg-red-100 text-red-600 border-red-300"
                                     : "bg-green-100 text-green-700 border-green-300"
                                 }`}
+                              >
+                                {alert.acknowledged === false
+                                  ? "Unacknowledged"
+                                  : "Acknowledged"}
+                              </span>
+                            </div>
+                            <div
+                              className={`text-sm ${
+                                logsAlert &&
+                                (recentAlerts[0]?.id === alert.id ||
+                                  alert.acknowledged === false)
+                                  ? "text-gray-800"
+                                  : "text-gray-400"
+                              }`}
                             >
-                              {alert.acknowledged === false
-                                ? "Unacknowledged"
-                                : "Acknowledged"}
-                            </span>
+                              {alert.message || "-"}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {timeAgo(alert.timestamp)}
+                            </div>
                           </div>
-                          <div
-                            className={`text-sm ${
-                              logsAlert &&
-                              (recentAlerts[0]?.id === alert.id ||
-                                alert.acknowledged === false)
-                                ? "text-gray-800"
-                                : "text-gray-400"
-                            }`}
-                          >
-                            {alert.message || "-"}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Mobile panel: fixed overlay inside main area (appears below header) and above sidebar */}
+                <div className="md:hidden fixed top-16 z-60 bg-white border-b border-gray-200 max-h-[40vh] overflow-y-auto left-20 right-4 rounded-lg shadow-sm">
+                  <div className="px-3 py-2 font-semibold text-black text-sm">
+                    Recent Alerts
+                  </div>
+                  {recentAlerts.length === 0 ? (
+                    <div className="px-3 py-2 text-gray-500 text-sm">
+                      No recent alerts.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-100">
+                      {recentAlerts.map((alert) => (
+                        <li
+                          key={alert.id}
+                          className={`px-3 py-2 flex items-start gap-2 hover:bg-gray-50 transition-colors
+                            ${
+                              alert.acknowledged === false
+                                ? "bg-white font-semibold text-gray-900"
+                                : "bg-gray-50 font-normal text-gray-500"
+                            }
+                          `}
+                        >
+                          <div className="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center">
+                            {(() => {
+                              const level = (
+                                alert.alert_level || ""
+                              ).toLowerCase();
+                              const msg = (alert.message || "").toLowerCase();
+                              if (
+                                level === "alert" ||
+                                msg.includes("alert") ||
+                                msg.includes("flame")
+                              ) {
+                                return (
+                                  <FaExclamationTriangle
+                                    className="w-5 h-5"
+                                    color="#f87171"
+                                    title="Alert"
+                                  />
+                                );
+                              } else if (
+                                level === "warning" ||
+                                msg.includes("warning")
+                              ) {
+                                return (
+                                  <FaExclamationTriangle
+                                    className="w-5 h-5"
+                                    color="#facc15"
+                                    title="Warning"
+                                  />
+                                );
+                              } else {
+                                return null;
+                              }
+                            })()}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {timeAgo(alert.timestamp)}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium">
+                                {alert.node
+                                  ? `Room ${String(alert.node).replace(
+                                      "NODE",
+                                      ""
+                                    )}`
+                                  : "Unknown Room"}
+                              </div>
+                              <span
+                                className={`text-[11px] px-2 py-0.5 rounded-full border ml-2 ${
+                                  alert.acknowledged === false
+                                    ? "bg-red-100 text-red-600 border-red-300"
+                                    : "bg-green-100 text-green-700 border-green-300"
+                                }`}
+                              >
+                                {alert.acknowledged === false ? "Unack" : "Ack"}
+                              </span>
+                            </div>
+                            <div
+                              className={`text-sm ${
+                                logsAlert &&
+                                (recentAlerts[0]?.id === alert.id ||
+                                  alert.acknowledged === false)
+                                  ? "text-gray-800"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {alert.message || "-"}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {timeAgo(alert.timestamp)}
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
             )}
           </div>
 

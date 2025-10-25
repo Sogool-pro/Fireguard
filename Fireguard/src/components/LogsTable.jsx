@@ -132,12 +132,6 @@ export default function LogsTable({ logs }) {
           >
             Download Excel
           </button>
-          <button
-            onClick={handleExportPDF}
-            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
-          >
-            Download PDF
-          </button>
         </div>
       </div>
       <div className="overflow-x-auto bg-white rounded-lg shadow">
