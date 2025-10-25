@@ -61,27 +61,6 @@ export default function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { signOut } = useAuth();
 
-  // Expose sidebar state via body class and dispatch events so other components
-  // (like Header) can react to sidebar open/close on mobile.
-  React.useEffect(() => {
-    try {
-      if (expanded) {
-        document.body.classList.add("sidebar-expanded");
-      } else {
-        document.body.classList.remove("sidebar-expanded");
-      }
-    } catch (e) {}
-    // notify listeners
-    window.dispatchEvent(new CustomEvent("sidebar:toggle", { detail: expanded }));
-  }, [expanded]);
-
-  // Listen for external requests to close the sidebar (used by Header when opening mobile notifications)
-  React.useEffect(() => {
-    const handler = () => setExpanded(false);
-    window.addEventListener("sidebar:close", handler);
-    return () => window.removeEventListener("sidebar:close", handler);
-  }, []);
-
   return (
     <>
       {/* Backdrop for mobile when sidebar is expanded */}
