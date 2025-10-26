@@ -8,6 +8,14 @@ export default function SettingsPage() {
 
   // local edited names map
   const [edited, setEdited] = useState({});
+  // confirmation modal state
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     const map = {};
@@ -33,10 +41,6 @@ export default function SettingsPage() {
   };
 
   const removeRoom = async (nodeId) => {
-    const ok = window.confirm(
-      "Remove this room and all its sensor data? This cannot be undone."
-    );
-    if (!ok) return;
     try {
       await remove(ref(db, `sensor_data/${nodeId}`));
       await remove(ref(db, `room_names/${nodeId}`));
@@ -72,6 +76,28 @@ export default function SettingsPage() {
     } catch (err) {
       console.error("Failed to toggle repair status:", err);
       alert("Failed to update repair status");
+    }
+  };
+
+  // helper to open confirmation modal
+  const showConfirm = ({ title, message, onConfirm }) => {
+    setConfirm({ open: true, title, message, onConfirm });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirm.onConfirm) {
+      setConfirm({ open: false, title: "", message: "", onConfirm: null });
+      return;
+    }
+    try {
+      setProcessing(true);
+      await confirm.onConfirm();
+    } catch (err) {
+      console.error("Action failed:", err);
+      // swallow; action functions already alert on failure
+    } finally {
+      setProcessing(false);
+      setConfirm({ open: false, title: "", message: "", onConfirm: null });
     }
   };
 
@@ -122,25 +148,57 @@ export default function SettingsPage() {
               <div className="flex gap-2 flex-wrap">
                 <button
                   className="px-3 py-1 bg-indigo-600 text-white rounded text-sm"
-                  onClick={() => saveName(r.nodeId)}
+                  onClick={() =>
+                    showConfirm({
+                      title: "Save room name",
+                      message: `Save new name "${
+                        edited[r.nodeId] ?? r.roomName
+                      }" for ${r.roomName}?`,
+                      onConfirm: () => saveName(r.nodeId),
+                    })
+                  }
                 >
                   Save
                 </button>
                 <button
                   className="px-3 py-1 bg-gray-600 text-white rounded text-sm"
-                  onClick={() => toggleArchive(r.nodeId)}
+                  onClick={() =>
+                    showConfirm({
+                      title: r.archived ? "Unarchive room" : "Archive room",
+                      message: r.archived
+                        ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
+                        : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
+                      onConfirm: () => toggleArchive(r.nodeId),
+                    })
+                  }
                 >
                   {r.archived ? "Unarchive" : "Archive"}
                 </button>
                 <button
                   className="px-3 py-1 bg-yellow-600 text-white rounded text-sm"
-                  onClick={() => toggleRepair(r.nodeId)}
+                  onClick={() =>
+                    showConfirm({
+                      title: r.onRepair
+                        ? "Mark room OK"
+                        : "Mark room for repair",
+                      message: r.onRepair
+                        ? `Mark ${r.roomName} as OK (remove repair flag)?`
+                        : `Mark ${r.roomName} as on repair?`,
+                      onConfirm: () => toggleRepair(r.nodeId),
+                    })
+                  }
                 >
                   {r.onRepair ? "Mark OK" : "Mark Repair"}
                 </button>
                 <button
                   className="px-3 py-1 bg-red-600 text-white rounded text-sm"
-                  onClick={() => removeRoom(r.nodeId)}
+                  onClick={() =>
+                    showConfirm({
+                      title: "Remove room",
+                      message: `Remove ${r.roomName} and its sensor data? This cannot be undone.`,
+                      onConfirm: () => removeRoom(r.nodeId),
+                    })
+                  }
                 >
                   Remove
                 </button>
@@ -149,6 +207,45 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
+      {/* Confirmation Modal */}
+      {confirm.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-title"
+        >
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 p-4">
+            <h3 id="confirm-title" className="text-lg font-semibold mb-2">
+              {confirm.title}
+            </h3>
+            <p className="text-sm text-gray-700 mb-4">{confirm.message}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-1 rounded border"
+                onClick={() =>
+                  setConfirm({
+                    open: false,
+                    title: "",
+                    message: "",
+                    onConfirm: null,
+                  })
+                }
+                disabled={processing}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-1 bg-red-600 text-white rounded"
+                onClick={handleConfirm}
+                disabled={processing}
+              >
+                {processing ? "Please wait..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
