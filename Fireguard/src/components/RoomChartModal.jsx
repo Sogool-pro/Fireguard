@@ -54,7 +54,9 @@ export default function RoomChartModal() {
     const unsub = onValue(alertsRef, (snapshot) => {
       const data = snapshot.val() || {};
       // Filter alerts for this room/node
-      const node = room.roomName.replace("ROOM NO. ", "NODE");
+      const node = room.nodeId
+        ? room.nodeId
+        : room.roomName.replace("ROOM NO. ", "NODE");
       const arr = Object.values(data)
         .filter((alert) => alert.node === node)
         .map((alert) => ({

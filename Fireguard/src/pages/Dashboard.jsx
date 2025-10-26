@@ -39,21 +39,29 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 md:ml-5 flex flex-col min-h-screen text-sm md:text-base md:pb-24">
-      <DashboardStats
-        totalRooms={rooms.length}
-        alertsToday={alertsToday}
-        unacknowledgedAlerts={unacknowledgedAlerts}
-      />
-      <div className="flex flex-wrap justify-center gap-6 px-4">
-        {rooms.map((room, idx) => (
-          <div
-            key={idx}
-            className="flex justify-center flex-grow flex-shrink basis-[240px] max-w-[320px]"
-          >
-            <RoomTile roomIndex={idx} {...room} />
-          </div>
-        ))}
-      </div>
+      {/* only count rooms that are not archived */}
+      {(() => {
+        const visibleRooms = rooms.filter((r) => !r.archived);
+        return (
+          <>
+            <DashboardStats
+              totalRooms={visibleRooms.length}
+              alertsToday={alertsToday}
+              unacknowledgedAlerts={unacknowledgedAlerts}
+            />
+            <div className="flex flex-wrap justify-center gap-6 px-4">
+              {visibleRooms.map((room, idx) => (
+                <div
+                  key={room.nodeId || idx}
+                  className="flex justify-center flex-grow flex-shrink basis-[240px] max-w-[320px]"
+                >
+                  <RoomTile {...room} />
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
       {/* Legend Footer: static on mobile (inside main flow), fixed to viewport bottom on md+ */}
       {/* Fixed footer on desktop so it always sits at the bottom of the screen; mobile keeps inline/sticky behavior */}
       {/* Put footer behind the sidebar/backdrop (lower z) and on md+ shift it right by the sidebar width (16rem)

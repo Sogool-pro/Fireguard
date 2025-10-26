@@ -28,7 +28,7 @@ function getBlinkingClass({
 
 export default function RoomTile(props) {
   const { rooms, setRooms, setBuzzerOn } = useRoom();
-  const { roomIndex, ...room } = props;
+  const room = props;
   const { showRoomChart } = useRoomChartModal();
 
   const blinkingClass = getBlinkingClass(room);
@@ -38,27 +38,33 @@ export default function RoomTile(props) {
     if (blinkingClass) {
       setBuzzerOn(true);
     } else {
-      // Check if any other room is blinking
-      const anyBlinking = rooms.some(
-        (r, idx) => getBlinkingClass(r) && idx !== roomIndex
-      );
+      // Check if any other room is blinking (exclude this room by nodeId if present)
+      const anyBlinking = rooms.some((r) => {
+        if (r.nodeId && room.nodeId)
+          return getBlinkingClass(r) && r.nodeId !== room.nodeId;
+        return getBlinkingClass(r) && r.roomName !== room.roomName;
+      });
       if (!anyBlinking) setBuzzerOn(false);
     }
     // eslint-disable-next-line
-  }, [blinkingClass, rooms, setBuzzerOn, roomIndex]);
+  }, [blinkingClass, rooms, setBuzzerOn]);
 
   const handlePowerClick = () => {
     setRooms((prev) =>
-      prev.map((r, idx) =>
-        idx === roomIndex
+      prev.map((r) =>
+        r.nodeId === room.nodeId
           ? { ...r, status: r.status === "Active" ? "Deactivated" : "Active" }
           : r
       )
     );
-    // Find the node name from roomName (e.g., ROOM NO. 1 -> NODE1)
-    const nodeMatch = room.roomName.match(/ROOM NO\. ?(\d+)/i);
-    if (nodeMatch) {
-      const nodeKey = `NODE${nodeMatch[1]}`;
+    // Determine node key from nodeId if available, otherwise fallback to parsing roomName
+    let nodeKey = null;
+    if (room.nodeId) nodeKey = room.nodeId;
+    else {
+      const nodeMatch = room.roomName.match(/ROOM NO\. ?(\d+)/i);
+      if (nodeMatch) nodeKey = `NODE${nodeMatch[1]}`;
+    }
+    if (nodeKey) {
       update(ref(db, `sensor_data/${nodeKey}`), {
         silenced: room.status === "Active" ? true : false,
       });
