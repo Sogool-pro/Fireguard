@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { db } from "../firebase";
-import { ref, update } from "firebase/database";
 
 // Helper to format date as 'MAR 5 2025 9:00 pm'
 function formatLogDate(dateStr) {
@@ -71,7 +70,9 @@ export default function LogsTable({ logs }) {
 
   // Excel Export
   const handleExportExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredLogs);
+    // export logs without 'acknowledged' field
+    const exportLogs = filteredLogs.map(({ acknowledged, ...rest }) => rest);
+    const worksheet = XLSX.utils.json_to_sheet(exportLogs);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
     XLSX.writeFile(workbook, "Logs.xlsx");
@@ -92,7 +93,6 @@ export default function LogsTable({ logs }) {
           "Flame Sensor",
           "Smoke Level",
           "CO Level",
-          "Acknowledge",
         ],
       ],
       body: filteredLogs.map((log) => [
@@ -104,7 +104,6 @@ export default function LogsTable({ logs }) {
         log.flame,
         log.smoke,
         log.carbonMonoxide,
-        log.acknowledged ? "✔" : "",
       ]),
       startY: 18,
       styles: { fontSize: 8 },
@@ -113,14 +112,7 @@ export default function LogsTable({ logs }) {
     doc.save("logs.pdf");
   };
 
-  // Acknowledge handler
-  const handleAcknowledge = (log) => {
-    if (!log.id) return;
-    if (!window.confirm("Are you sure you want to acknowledge this alert?"))
-      return;
-    // Update the alert in Firebase
-    update(ref(db, `alerts/${log.id}`), { acknowledged: true });
-  };
+  // (Acknowledgement feature removed)
 
   return (
     <div>
@@ -162,9 +154,7 @@ export default function LogsTable({ logs }) {
               <th className="px-4 py-3 text-left font-semibold text-gray-700">
                 CO Level
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Acknowledge
-              </th>
+              {/* Acknowledge column removed */}
             </tr>
             <tr className="bg-gray-50">
               {Object.keys(filters).map((key) => (
@@ -178,7 +168,7 @@ export default function LogsTable({ logs }) {
                   />
                 </th>
               ))}
-              <th></th>
+              {/* removed acknowledge column filter placeholder */}
             </tr>
           </thead>
           <tbody>
@@ -194,18 +184,7 @@ export default function LogsTable({ logs }) {
                 <td className="px-4 py-3">{log.flame}</td>
                 <td className="px-4 py-3">{log.smoke}</td>
                 <td className="px-4 py-3">{log.carbonMonoxide}</td>
-                <td className="px-4 py-3">
-                  {log.acknowledged ? (
-                    <span className="text-green-600 font-bold">✔</span>
-                  ) : (
-                    <button
-                      className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-                      onClick={() => handleAcknowledge(log)}
-                    >
-                      Acknowledge
-                    </button>
-                  )}
-                </td>
+                {/* Acknowledge column removed */}
               </tr>
             ))}
             {paginatedLogs.length === 0 && (

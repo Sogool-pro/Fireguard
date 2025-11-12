@@ -125,27 +125,7 @@ function getSeverityData(alerts) {
 }
 
 // Helper: Response time (dummy, adjust if you have this data)
-function getResponseTimeData(alerts) {
-  // Here we just return dummy data for each month
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  return months.map((month) => ({
-    month,
-    time: Math.random() * 2 + 3, // 3-5 min random
-  }));
-}
+// (Average response time chart removed per request)
 
 // Helper: Room comparison for bar chart
 function getRoomComparisonData(alerts) {
@@ -262,9 +242,7 @@ function getAlertTrendsData(alerts) {
   return result;
 }
 
-function getUnacknowledgedCount(alerts) {
-  return alerts.filter((alert) => alert.acknowledged === false).length;
-}
+// removed unacknowledged count helper (acknowledgement feature removed)
 
 const COLORS = ["#2563eb", "#facc15", "#f87171", "#34d399", "#a78bfa"];
 
@@ -289,13 +267,11 @@ export default function AnalyticsPage() {
   const alertTypeData = getAlertTypeData(alerts);
   const roomData = getRoomData(alerts);
   const severityData = getSeverityData(alerts);
-  const responseTimeData = getResponseTimeData(alerts);
   const roomComparisonData = getRoomComparisonData(alerts);
   const realTimeSensorData = getRecentSensorData(alerts);
   const roomSeverityData = getRoomSeverityData(alerts);
   const sensorBreakdownData = getSensorBreakdownData(alerts);
   const alertTrendsData = getAlertTrendsData(alerts);
-  const unacknowledgedCount = getUnacknowledgedCount(alerts);
 
   return (
     <div className="p-4 space-y-6">
@@ -445,28 +421,7 @@ export default function AnalyticsPage() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        {/* Average Response Time */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">
-            Average Response Time (min)
-          </h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={responseTimeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="time"
-                stroke="#a78bfa"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {/* Average Response Time chart removed per request */}
       </div>
 
       {/* Room Comparison & Real-Time Sensor Readings */}

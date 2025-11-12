@@ -18,7 +18,7 @@ function getBlinkingClass({
 }) {
   if (status !== "Active") return "";
   const thresholdAlarm =
-    fire || temperature > 50 || smoke > 800 || carbonMonoxide > 800;
+    fire || temperature > 55 || smoke > 600 || carbonMonoxide > 70;
   if (alert_level && alert_level.toLowerCase() === "warning")
     return "blink-yellow";
   if (thresholdAlarm || (alert_level && alert_level.toLowerCase() === "alert"))
@@ -135,7 +135,7 @@ export default function RoomTile(props) {
         </div>
         <div>
           <div className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-            Smoke
+            Smoke or Gas
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
             {room.smoke}

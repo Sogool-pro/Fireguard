@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRoom } from "../context/RoomContext";
 import { db } from "../firebase";
-import { ref, set, remove } from "firebase/database";
+import { ref, set, remove, get } from "firebase/database";
 
 export default function SettingsPage() {
   const { rooms, setRooms } = useRoom();
@@ -14,6 +14,9 @@ export default function SettingsPage() {
     title: "",
     message: "",
     onConfirm: null,
+    // show an optional "also delete data" checkbox
+    showDeleteOption: false,
+    deleteOption: true,
   });
   const [processing, setProcessing] = useState(false);
 
@@ -40,15 +43,52 @@ export default function SettingsPage() {
     }
   };
 
-  const removeRoom = async (nodeId) => {
-    try {
-      await remove(ref(db, `sensor_data/${nodeId}`));
-      await remove(ref(db, `room_names/${nodeId}`));
-      setRooms((prev) => prev.filter((r) => r.nodeId !== nodeId));
-    } catch (err) {
-      console.error("Failed to remove room:", err);
-      alert("Failed to remove room");
-    }
+  const removeRoom = (nodeId) => {
+    // default behavior: delete sensor data and related alerts unless caller requests otherwise
+    return async function (alsoDelete = true) {
+      try {
+        if (alsoDelete) {
+          await remove(ref(db, `sensor_data/${nodeId}`));
+          await remove(ref(db, `room_names/${nodeId}`));
+          // Also remove any alerts/logs that reference this nodeId
+          try {
+            const alertsSnap = await get(ref(db, `alerts`));
+            const alerts = alertsSnap.val() || {};
+            const removals = [];
+            Object.entries(alerts).forEach(([id, alert]) => {
+              if (!alert) return;
+              // alert may store node as 'NODE1' or under nodeId; remove if it matches
+              if (alert.node === nodeId || alert.nodeId === nodeId) {
+                removals.push(remove(ref(db, `alerts/${id}`)));
+              }
+            });
+            if (removals.length > 0) await Promise.all(removals);
+          } catch (e) {
+            console.error("Failed to remove related alerts:", e);
+            // don't block room removal on alert cleanup failure
+          }
+          // remove from local state as well
+          setRooms((prev) => prev.filter((r) => r.nodeId !== nodeId));
+        } else {
+          // If user chose NOT to delete sensor data, persistently hide the room
+          // by setting archived=true in room_meta so the RoomContext listener won't re-add it.
+          try {
+            await set(ref(db, `room_meta/${nodeId}/archived`), true);
+          } catch (e) {
+            console.error("Failed to set archived flag:", e);
+          }
+          // Update local state to reflect archived flag so UI hides it immediately
+          setRooms((prev) =>
+            prev.map((r) =>
+              r.nodeId === nodeId ? { ...r, archived: true } : r
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Failed to remove room:", err);
+        alert("Failed to remove room");
+      }
+    };
   };
 
   const toggleArchive = async (nodeId) => {
@@ -80,8 +120,16 @@ export default function SettingsPage() {
   };
 
   // helper to open confirmation modal
-  const showConfirm = ({ title, message, onConfirm }) => {
-    setConfirm({ open: true, title, message, onConfirm });
+  const showConfirm = ({ title, message, onConfirm, showDeleteOption }) => {
+    setConfirm({
+      open: true,
+      title,
+      message,
+      onConfirm,
+      showDeleteOption: !!showDeleteOption,
+      // default to true to preserve previous behavior when deleting
+      deleteOption: true,
+    });
   };
 
   const handleConfirm = async () => {
@@ -91,7 +139,8 @@ export default function SettingsPage() {
     }
     try {
       setProcessing(true);
-      await confirm.onConfirm();
+      // Pass the deleteOption (true/false) to the confirm handler if it accepts it
+      await confirm.onConfirm(confirm.deleteOption);
     } catch (err) {
       console.error("Action failed:", err);
       // swallow; action functions already alert on failure
@@ -195,8 +244,9 @@ export default function SettingsPage() {
                   onClick={() =>
                     showConfirm({
                       title: "Remove room",
-                      message: `Remove ${r.roomName} and its sensor data? This cannot be undone.`,
-                      onConfirm: () => removeRoom(r.nodeId),
+                      message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
+                      onConfirm: removeRoom(r.nodeId),
+                      showDeleteOption: true,
                     })
                   }
                 >
@@ -220,6 +270,24 @@ export default function SettingsPage() {
               {confirm.title}
             </h3>
             <p className="text-sm text-gray-700 mb-4">{confirm.message}</p>
+            <div className="mb-4">
+              {confirm.showDeleteOption && (
+                <label className="flex items-center gap-2 mb-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={confirm.deleteOption}
+                    onChange={() =>
+                      setConfirm((prev) => ({
+                        ...prev,
+                        deleteOption: !prev.deleteOption,
+                      }))
+                    }
+                    className="w-4 h-4"
+                  />
+                  <span>Also delete sensor data and related alerts</span>
+                </label>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 className="px-3 py-1 rounded border"

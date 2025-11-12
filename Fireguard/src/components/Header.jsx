@@ -14,15 +14,15 @@ export default function Header() {
   const [recentAlerts, setRecentAlerts] = useState([]);
   const notifRef = useRef();
   const buzzerAudioRef = useRef(null);
-  // Determine if buzzer should play: any unacknowledged alert or any blinking tile (active alert)
+  // Determine if buzzer should play: any blinking tile (active alert) or an unread logs alert
   const shouldBuzzerPlay =
-    recentAlerts.some((a) => a.acknowledged === false) ||
+    logsAlert ||
     rooms.some(
       (room) =>
         (room.fire ||
-          room.temperature > 50 ||
-          room.smoke > 800 ||
-          room.carbonMonoxide > 800 ||
+          room.temperature > 55 ||
+          room.smoke > 600 ||
+          room.carbonMonoxide > 70 ||
           (room.alert_level && room.alert_level.toLowerCase() === "alert")) &&
         room.silenced !== true
     );
@@ -96,9 +96,9 @@ export default function Header() {
   const alarmRooms = rooms.filter((room) => {
     const thresholdAlarm =
       room.fire ||
-      room.temperature > 50 ||
-      room.smoke > 800 ||
-      room.carbonMonoxide > 800;
+      room.temperature > 55 ||
+      room.smoke > 600 ||
+      room.carbonMonoxide > 70;
     const alertLevelAlarm =
       room.alert_level && room.alert_level.toLowerCase() === "alert";
     return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
@@ -138,8 +138,7 @@ export default function Header() {
               aria-label="Show notifications"
             >
               <Bell size={20} className="text-gray-600" />
-              {logsAlert ||
-              recentAlerts.some((a) => a.acknowledged === false) ? (
+              {logsAlert ? (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               ) : null}
             </button>
@@ -159,13 +158,11 @@ export default function Header() {
                       {recentAlerts.map((alert) => (
                         <li
                           key={alert.id}
-                          className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors
-                            ${
-                              alert.acknowledged === false
-                                ? "bg-white font-bold text-gray-900"
-                                : "bg-gray-50 font-normal text-gray-400"
-                            }
-                          `}
+                          className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors ${
+                            logsAlert && recentAlerts[0]?.id === alert.id
+                              ? "bg-white font-bold text-gray-900"
+                              : "bg-gray-50 font-normal text-gray-400"
+                          }`}
                         >
                           <div className="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center">
                             {(() => {
@@ -211,23 +208,10 @@ export default function Header() {
                                     )}`
                                   : "Unknown Room"}
                               </div>
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full border ml-2 ${
-                                  alert.acknowledged === false
-                                    ? "bg-red-100 text-red-600 border-red-300"
-                                    : "bg-green-100 text-green-700 border-green-300"
-                                }`}
-                              >
-                                {alert.acknowledged === false
-                                  ? "Unacknowledged"
-                                  : "Acknowledged"}
-                              </span>
                             </div>
                             <div
                               className={`text-sm ${
-                                logsAlert &&
-                                (recentAlerts[0]?.id === alert.id ||
-                                  alert.acknowledged === false)
+                                logsAlert && recentAlerts[0]?.id === alert.id
                                   ? "text-gray-800"
                                   : "text-gray-400"
                               }`}
@@ -258,13 +242,11 @@ export default function Header() {
                       {recentAlerts.map((alert) => (
                         <li
                           key={alert.id}
-                          className={`px-3 py-2 flex items-start gap-2 hover:bg-gray-50 transition-colors
-                            ${
-                              alert.acknowledged === false
-                                ? "bg-white font-semibold text-gray-900"
-                                : "bg-gray-50 font-normal text-gray-500"
-                            }
-                          `}
+                          className={`px-3 py-2 flex items-start gap-2 hover:bg-gray-50 transition-colors ${
+                            logsAlert && recentAlerts[0]?.id === alert.id
+                              ? "bg-white font-semibold text-gray-900"
+                              : "bg-gray-50 font-normal text-gray-500"
+                          }`}
                         >
                           <div className="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center">
                             {(() => {
@@ -310,21 +292,10 @@ export default function Header() {
                                     )}`
                                   : "Unknown Room"}
                               </div>
-                              <span
-                                className={`text-[11px] px-2 py-0.5 rounded-full border ml-2 ${
-                                  alert.acknowledged === false
-                                    ? "bg-red-100 text-red-600 border-red-300"
-                                    : "bg-green-100 text-green-700 border-green-300"
-                                }`}
-                              >
-                                {alert.acknowledged === false ? "Unack" : "Ack"}
-                              </span>
                             </div>
                             <div
                               className={`text-sm ${
-                                logsAlert &&
-                                (recentAlerts[0]?.id === alert.id ||
-                                  alert.acknowledged === false)
+                                logsAlert && recentAlerts[0]?.id === alert.id
                                   ? "text-gray-800"
                                   : "text-gray-500"
                               }`}

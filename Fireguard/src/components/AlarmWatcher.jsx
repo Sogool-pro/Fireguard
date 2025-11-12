@@ -23,9 +23,9 @@ function getAlarmMessage(room) {
     return `${room.alert_message} (Room: ${room.roomName})`;
   }
   if (room.fire) return `Fire detected in ${room.roomName}!`;
-  if (room.temperature > 50) return `High temperature in ${room.roomName}!`;
-  if (room.smoke > 800) return `High smoke level in ${room.roomName}!`;
-  if (room.carbonMonoxide > 800) return `High CO in ${room.roomName}!`;
+  if (room.temperature > 55) return `High temperature in ${room.roomName}!`;
+  if (room.smoke > 600) return `High smoke level in ${room.roomName}!`;
+  if (room.carbonMonoxide > 70) return `High CO in ${room.roomName}!`;
   return null;
 }
 

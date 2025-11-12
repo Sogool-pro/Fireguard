@@ -24,11 +24,15 @@ export function NotificationProvider({ children }) {
     const hasBlinkingRooms = rooms.some((room) => {
       if (room.status !== "Active") return false;
       if (room.fire) return true;
-      const isFire = room.temperature > 50 || room.smoke > 800;
+      // Alarm thresholds per design: Temp >55, Smoke >600, CO >70
+      const isFire =
+        room.temperature > 55 || room.smoke > 600 || room.carbonMonoxide > 70;
+      // Warning thresholds per design: Temp 41-55, Smoke 301-600, CO 36-70, Humidity 86-95
       const isWarning =
-        (room.temperature > 35 && room.temperature <= 50) ||
-        (room.smoke > 500 && room.smoke <= 800) ||
-        (room.carbonMonoxide > 500 && room.carbonMonoxide <= 800);
+        (room.temperature > 40 && room.temperature <= 55) ||
+        (room.smoke > 300 && room.smoke <= 600) ||
+        (room.carbonMonoxide > 35 && room.carbonMonoxide <= 70) ||
+        (room.humidity > 85 && room.humidity <= 95);
       return isFire || isWarning;
     });
 

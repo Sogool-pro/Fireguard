@@ -8,7 +8,6 @@ import DashboardStats from "../components/DashboardStats";
 export default function Dashboard() {
   const { rooms } = useRoom();
   const [alertsToday, setAlertsToday] = useState(0);
-  const [unacknowledgedAlerts, setUnacknowledgedAlerts] = useState(0);
   const [legendExpanded, setLegendExpanded] = useState(false);
 
   useEffect(() => {
@@ -16,7 +15,6 @@ export default function Dashboard() {
     const unsub = onValue(alertsRef, (snapshot) => {
       const data = snapshot.val() || {};
       let todayCount = 0;
-      let unackCount = 0;
       const today = new Date();
       const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
       Object.values(data).forEach((alert) => {
@@ -26,13 +24,8 @@ export default function Dashboard() {
         if (alertDate === todayStr) {
           todayCount++;
         }
-        // Check if unacknowledged
-        if (alert.acknowledged === false) {
-          unackCount++;
-        }
       });
       setAlertsToday(todayCount);
-      setUnacknowledgedAlerts(unackCount);
     });
     return () => unsub();
   }, []);
@@ -47,7 +40,6 @@ export default function Dashboard() {
             <DashboardStats
               totalRooms={visibleRooms.length}
               alertsToday={alertsToday}
-              unacknowledgedAlerts={unacknowledgedAlerts}
             />
             <div className="flex flex-wrap justify-center gap-6 px-4">
               {visibleRooms.map((room, idx) => (
@@ -73,15 +65,15 @@ export default function Dashboard() {
               <span className="inline-block w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></span>
               <span className="font-semibold text-gray-700">Warning</span>
               <span className="hidden sm:inline-block text-gray-500">
-                (Temperature 36-50°C, Smoke 501-800 ppm, CO 501-800 ppm,
-                Humidity 81-100%)
+                (Temperature 41-55°C, Smoke 301-600 ppm, CO 36-70 ppm, Humidity
+                86-95%)
               </span>
             </span>
             <span className="flex items-center gap-2">
               <span className="inline-block w-4 h-4 rounded-full bg-red-500 animate-pulse"></span>
               <span className="font-semibold text-gray-700">Alert</span>
               <span className="hidden sm:inline-block text-gray-500">
-                (Temperature {">"}50°C, Smoke {">"}800 ppm, CO {">"}800 ppm,
+                (Temperature {">"}55°C, Smoke {">"}600 ppm, CO {">"}70 ppm,
                 Flame detected)
               </span>
             </span>
@@ -103,19 +95,19 @@ export default function Dashboard() {
           >
             <span className="mr-3 md:mr-4">
               <span className="font-semibold">Temperature:</span> Normal {"≤"}
-              35°C, Warning 36-50°C, Alert {">"}50°C
+              40°C, Warning 41-55°C, Alert {">"}55°C
             </span>
             <span className="mr-3 md:mr-4">
               <span className="font-semibold">Smoke (ppm):</span> Normal {"≤"}
-              500, Warning 501-800, Alert {">"}800
+              300, Warning 301-600, Alert {">"}600
             </span>
             <span className="mr-3 md:mr-4">
-              <span className="font-semibold">CO (ppm):</span> Normal {"≤"}500,
-              Warning 501-800, Alert {">"}800
+              <span className="font-semibold">CO (ppm):</span> Normal {"≤"}35,
+              Warning 36-70, Alert {">"}70
             </span>
             <span className="mr-3 md:mr-4">
-              <span className="font-semibold">Humidity:</span> Normal {"≤"}80%,
-              Warning 81-100%
+              <span className="font-semibold">Humidity:</span> Normal {"≤"}85%,
+              Warning 86-95%, Alert {">"}95%
             </span>
             <span>
               <span className="font-semibold">Flame:</span> Alert if detected

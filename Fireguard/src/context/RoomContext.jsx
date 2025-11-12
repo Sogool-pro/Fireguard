@@ -123,9 +123,9 @@ export function RoomProvider({ children }) {
     const anyAlarm = rooms.some((room) => {
       const thresholdAlarm =
         room.fire ||
-        room.temperature > 50 ||
-        room.smoke > 800 ||
-        room.carbonMonoxide > 800;
+        room.temperature > 55 ||
+        room.smoke > 600 ||
+        room.carbonMonoxide > 70;
       const alertLevelAlarm =
         room.alert_level && room.alert_level.toLowerCase() === "alert";
       return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;

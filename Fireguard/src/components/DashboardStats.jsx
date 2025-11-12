@@ -18,21 +18,10 @@ const stats = [
     iconBg: "bg-red-500",
     valueClass: "text-red-600",
   },
-  {
-    key: "unacknowledgedAlerts",
-    label: "Unacknowledged Alerts",
-    icon: <MdOutlineReportGmailerrorred className="text-white text-lg" />,
-    iconBg: "bg-yellow-500",
-    valueClass: "text-yellow-600",
-  },
 ];
 
-export default function DashboardStats({
-  totalRooms,
-  alertsToday,
-  unacknowledgedAlerts,
-}) {
-  const values = { totalRooms, alertsToday, unacknowledgedAlerts };
+export default function DashboardStats({ totalRooms, alertsToday }) {
+  const values = { totalRooms, alertsToday };
   return (
     <div className=" bg-white shadow-sm rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
       {stats.map((stat) => (
