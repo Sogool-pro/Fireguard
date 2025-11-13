@@ -76,7 +76,7 @@ export default function Sidebar() {
           expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative"
         } ${expanded ? "w-64" : "w-20"}`}
       >
-        <nav className="h-full flex flex-col bg-blue-50 border-r-blue-50 shadow-stone-300">
+        <nav className="h-full flex flex-col bg-blue-50 border-r-blue-50 shadow-[8px_0_17px_rgba(0,0,0,0.07)]">
           <div className="p-4 pb-2 flex justify-between items-center relative">
             <img
               src={FireguardImg}

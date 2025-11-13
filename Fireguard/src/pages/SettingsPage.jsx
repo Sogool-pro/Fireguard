@@ -186,7 +186,7 @@ export default function SettingsPage() {
             <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch md:items-center gap-2">
               <input
                 type="text"
-                className="border rounded px-2 py-1 text-sm w-full md:w-56 flex-1 min-w-0"
+                className="border-[.5px] rounded px-2 py-1 text-sm w-full md:w-56 flex-1 min-w-0"
                 value={edited[r.nodeId] ?? r.roomName}
                 onChange={(e) =>
                   setEdited((s) => ({ ...s, [r.nodeId]: e.target.value }))
