@@ -53,7 +53,7 @@ export default function RoomTile(props) {
     setRooms((prev) =>
       prev.map((r) =>
         r.nodeId === room.nodeId
-          ? { ...r, status: r.status === "Active" ? "Deactivated" : "Active" }
+          ? { ...r, status: r.status === "Active" ? "Silenced" : "Active" }
           : r
       )
     );

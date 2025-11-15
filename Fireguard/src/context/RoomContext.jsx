@@ -40,7 +40,7 @@ export function RoomProvider({ children }) {
           (sensor.alert_level && sensor.alert_level.toLowerCase() === "alert"),
         status:
           sensor.alert_active === false || sensor.silenced
-            ? "Deactivated"
+            ? "Silenced"
             : "Active",
         alert_level: sensor.alert_level,
         alert_message: sensor.alert_message,
@@ -77,11 +77,12 @@ export function RoomProvider({ children }) {
           const timeSinceUpdate = now - (room.lastUpdated || now);
           const isNowOffline = timeSinceUpdate > OFFLINE_THRESHOLD;
 
-          // If status changed to offline, reset sensor readings
+          // If the room just went offline, mark it Offline and zero readings
           if (isNowOffline && !room.isOffline) {
             return {
               ...room,
               isOffline: true,
+              status: "Offline",
               temperature: 0,
               humidity: 0,
               smoke: 0,
@@ -90,10 +91,17 @@ export function RoomProvider({ children }) {
               fire: false,
             };
           }
-          // If it's now online again, just update the flag (actual data comes from sensor update)
+
+          // If the room came back online, clear the offline flag and restore status
+          // (actual sensor values will be overwritten by the realtime listener)
           if (!isNowOffline && room.isOffline) {
-            return { ...room, isOffline: false };
+            return {
+              ...room,
+              isOffline: false,
+              status: room.status === "Offline" ? "Active" : room.status,
+            };
           }
+
           return room;
         })
       );
