@@ -6,6 +6,7 @@ import { useNotification } from "../context/NotificationContext";
 import { db } from "../firebase";
 import { ref, onValue } from "firebase/database";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
   const { rooms } = useRoom();
@@ -112,6 +113,8 @@ export default function Header() {
     "/settings": "Settings",
   };
   const pageTitle = pageTitles[location.pathname] || "Fireguard";
+
+  const { user: authUser, role, loading: authLoading } = useAuth();
 
   return (
     <>
@@ -320,7 +323,13 @@ export default function Header() {
             <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
               <User size={20} className="text-white" />
             </div>
-            <span className="text-sm font-medium text-gray-700">Admin</span>
+            <span className="text-sm font-medium text-gray-700">
+              {authLoading
+                ? "..."
+                : role
+                ? role.charAt(0).toUpperCase() + role.slice(1)
+                : "User"}
+            </span>
           </button>
         </div>
       </header>

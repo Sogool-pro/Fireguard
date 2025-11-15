@@ -41,7 +41,7 @@ export default function LoginPage() {
           <form className="w-full flex flex-col gap-4" onSubmit={handleLogin}>
             <input
               type="text"
-              placeholder="Username"
+              placeholder="Email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="px-4 py-2 rounded-lg bg-white text-gray-800 font-semibold focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -76,7 +76,10 @@ export default function LoginPage() {
               Login
             </button>
           </form>
-          <button className="mt-4 text-white underline text-sm hover:text-gray-200">
+          <button
+            className="mt-4 text-indigo-600 underline text-sm hover:text-indigo-800"
+            onClick={() => navigate("/register")}
+          >
             Create account
           </button>
         </div>

@@ -21,7 +21,7 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const location = useLocation();
   const { dashboardAlert, logsAlert } = useNotification();
-  const { user } = useAuth();
+  const { user, role, loading } = useAuth();
 
   const navItems = [
     {
@@ -49,12 +49,14 @@ export default function Sidebar() {
       text: "Users",
       icon: <UserCircle2 size={20} />,
       active: location.pathname === "/users",
+      adminOnly: true,
     },
     {
       path: "/settings",
       text: "Settings",
       icon: <Settings size={20} />,
       active: location.pathname === "/settings",
+      adminOnly: true,
     },
   ];
 
@@ -103,16 +105,24 @@ export default function Sidebar() {
 
           <SidebarContext.Provider value={{ expanded }}>
             <ul className="flex-1 px-3">
-              {navItems.map((item) => (
-                <SidebarItem
-                  key={item.path}
-                  icon={item.icon}
-                  text={item.text}
-                  to={item.path}
-                  active={item.active}
-                  alert={item.alert}
-                />
-              ))}
+              {navItems
+                .filter((item) => {
+                  if (item.adminOnly) {
+                    // while loading, hide admin-only links; only show when role === 'admin'
+                    return !loading && role === "admin";
+                  }
+                  return true;
+                })
+                .map((item) => (
+                  <SidebarItem
+                    key={item.path}
+                    icon={item.icon}
+                    text={item.text}
+                    to={item.path}
+                    active={item.active}
+                    alert={item.alert}
+                  />
+                ))}
             </ul>
           </SidebarContext.Provider>
 
