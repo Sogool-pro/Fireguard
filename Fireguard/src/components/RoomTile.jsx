@@ -74,7 +74,11 @@ export default function RoomTile(props) {
   return (
     <div
       className={`rounded-2xl shadow-md p-6 w-full max-w-full transition duration-300 transform hover:-translate-y-1 cursor-pointer ${
-        blinkingClass ? blinkingClass : "bg-white"
+        room.isOffline
+          ? "bg-gray-300"
+          : blinkingClass
+          ? blinkingClass
+          : "bg-white"
       }`}
       onClick={() => showRoomChart(room)}
     >
@@ -110,7 +114,7 @@ export default function RoomTile(props) {
             Temperature
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
-            {room.temperature}°C
+            {room.isOffline ? 0 : room.temperature}°C
             <FaThermometerHalf className="text-base text-gray-500" />
           </div>
         </div>
@@ -119,7 +123,7 @@ export default function RoomTile(props) {
             Carbon monoxide
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
-            {room.carbonMonoxide}
+            {room.isOffline ? 0 : room.carbonMonoxide}
             <span className="text-xs font-normal text-gray-500">ppm</span>
             <MdCo2 className="text-2xl text-gray-500" />
           </div>
@@ -129,7 +133,7 @@ export default function RoomTile(props) {
             Humidity
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
-            {room.humidity}%
+            {room.isOffline ? 0 : room.humidity}%
             <FaCloud className="text-base text-gray-500" />
           </div>
         </div>
@@ -138,7 +142,7 @@ export default function RoomTile(props) {
             Smoke or Gas
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
-            {room.smoke}
+            {room.isOffline ? 0 : room.smoke}
             <span className="text-xs font-normal text-gray-500">ppm</span>
             <GiSmokeBomb className="text-2xl text-gray-500" />
           </div>

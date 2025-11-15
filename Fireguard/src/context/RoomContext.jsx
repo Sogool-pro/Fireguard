@@ -24,6 +24,7 @@ export function RoomProvider({ children }) {
     const sensorRef = ref(db, "sensor_data");
     const unsub = onValue(sensorRef, (snapshot) => {
       const data = snapshot.val() || {};
+      const now = Date.now();
       const roomsArr = Object.entries(data).map(([node, sensor]) => ({
         // include the node id so other parts (settings) can reference it
         nodeId: node,
@@ -44,6 +45,8 @@ export function RoomProvider({ children }) {
         alert_level: sensor.alert_level,
         alert_message: sensor.alert_message,
         silenced: sensor.silenced,
+        lastUpdated: now,
+        isOffline: false,
       }));
       // If there are custom room names loaded, apply them
       setRooms((prev) => {
@@ -62,6 +65,40 @@ export function RoomProvider({ children }) {
       });
     });
     return () => unsub();
+  }, []);
+
+  // Check for offline rooms (no update for 1 minute)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const OFFLINE_THRESHOLD = 60000; // 1 minute in milliseconds
+      setRooms((current) =>
+        current.map((room) => {
+          const timeSinceUpdate = now - (room.lastUpdated || now);
+          const isNowOffline = timeSinceUpdate > OFFLINE_THRESHOLD;
+
+          // If status changed to offline, reset sensor readings
+          if (isNowOffline && !room.isOffline) {
+            return {
+              ...room,
+              isOffline: true,
+              temperature: 0,
+              humidity: 0,
+              smoke: 0,
+              carbonMonoxide: 0,
+              flame: 0,
+              fire: false,
+            };
+          }
+          // If it's now online again, just update the flag (actual data comes from sensor update)
+          if (!isNowOffline && room.isOffline) {
+            return { ...room, isOffline: false };
+          }
+          return room;
+        })
+      );
+    }, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
   }, []);
 
   // Listen for custom room names under 'room_names' and merge into rooms
