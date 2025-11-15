@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { db } from "../firebase";
 import { ref, onValue } from "firebase/database";
+import { useRoom } from "../context/RoomContext";
 
 // Helper: Parse timestamp string to Date
 function parseTimestamp(ts) {
@@ -43,6 +44,13 @@ function classifyAlert(alert) {
   )
     return "smoke_gas";
   return "other";
+}
+
+// Helper: Map node ID to custom room name
+function getRoomName(nodeId, rooms) {
+  if (!nodeId) return "Unknown";
+  const room = rooms.find((r) => r.nodeId === nodeId);
+  return room ? room.roomName : `Room ${nodeId.replace("NODE", "")}`;
 }
 
 // Helper: Group alerts by month for line chart
@@ -98,12 +106,10 @@ function getAlertTypeData(alerts) {
 }
 
 // Helper: Room distribution for pie chart
-function getRoomData(alerts) {
+function getRoomData(alerts, rooms) {
   const roomMap = {};
   alerts.forEach((alert) => {
-    const room = alert.node
-      ? `Room ${alert.node.replace("NODE", "")}`
-      : "Unknown";
+    const room = getRoomName(alert.node, rooms);
     roomMap[room] = (roomMap[room] || 0) + 1;
   });
   return Object.entries(roomMap).map(([name, value]) => ({ name, value }));
@@ -128,12 +134,10 @@ function getSeverityData(alerts) {
 // (Average response time chart removed per request)
 
 // Helper: Room comparison for bar chart
-function getRoomComparisonData(alerts) {
+function getRoomComparisonData(alerts, rooms) {
   const roomMap = {};
   alerts.forEach((alert) => {
-    const room = alert.node
-      ? `Room ${alert.node.replace("NODE", "")}`
-      : "Unknown";
+    const room = getRoomName(alert.node, rooms);
     if (!roomMap[room]) roomMap[room] = { room, CO: 0, Smoke: 0, Flame: 0 };
     if (alert.message?.toLowerCase().includes("co")) roomMap[room].CO++;
     if (alert.message?.toLowerCase().includes("smoke")) roomMap[room].Smoke++;
@@ -172,12 +176,10 @@ function getRecentSensorData(alerts) {
   });
 }
 
-function getRoomSeverityData(alerts) {
+function getRoomSeverityData(alerts, rooms) {
   const roomMap = {};
   alerts.forEach((alert) => {
-    const room = alert.node
-      ? `Room ${alert.node.replace("NODE", "")}`
-      : "Unknown";
+    const room = getRoomName(alert.node, rooms);
     const level = (alert.level || alert.alert_level || "").toLowerCase();
     if (!roomMap[room]) roomMap[room] = { room, Warning: 0, Alert: 0 };
     if (level === "warning") roomMap[room].Warning++;
@@ -248,6 +250,7 @@ const COLORS = ["#2563eb", "#facc15", "#f87171", "#34d399", "#a78bfa"];
 
 export default function AnalyticsPage() {
   const [alerts, setAlerts] = useState([]);
+  const { rooms } = useRoom();
 
   useEffect(() => {
     const alertsRef = ref(db, "alerts");
@@ -265,11 +268,11 @@ export default function AnalyticsPage() {
   // Compute chart data from live alerts
   const monthlyData = getMonthlyData(alerts);
   const alertTypeData = getAlertTypeData(alerts);
-  const roomData = getRoomData(alerts);
+  const roomData = getRoomData(alerts, rooms);
   const severityData = getSeverityData(alerts);
-  const roomComparisonData = getRoomComparisonData(alerts);
+  const roomComparisonData = getRoomComparisonData(alerts, rooms);
   const realTimeSensorData = getRecentSensorData(alerts);
-  const roomSeverityData = getRoomSeverityData(alerts);
+  const roomSeverityData = getRoomSeverityData(alerts, rooms);
   const sensorBreakdownData = getSensorBreakdownData(alerts);
   const alertTrendsData = getAlertTrendsData(alerts);
 
