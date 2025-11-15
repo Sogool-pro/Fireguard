@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useRoom } from "../context/RoomContext";
+import { FaHome, FaEdit, FaArchive, FaTrash } from "react-icons/fa";
 import { db } from "../firebase";
 import { ref, set, remove, get } from "firebase/database";
 
@@ -8,6 +9,7 @@ export default function SettingsPage() {
 
   // local edited names map
   const [edited, setEdited] = useState({});
+  const [editingMap, setEditingMap] = useState({});
   // confirmation modal state
   const [confirm, setConfirm] = useState({
     open: false,
@@ -26,6 +28,12 @@ export default function SettingsPage() {
       if (r.nodeId) map[r.nodeId] = r.roomName;
     });
     setEdited(map);
+    // reset editing states for current rooms
+    const editState = {};
+    rooms.forEach((r) => {
+      if (r.nodeId) editState[r.nodeId] = false;
+    });
+    setEditingMap(editState);
   }, [rooms]);
 
   const saveName = async (nodeId) => {
@@ -151,107 +159,144 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
-      <h2 className="text-lg font-semibold mb-4">Rooms</h2>
-      <div className="space-y-3">
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="flex items-start gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Settings</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage your account settings and preferences
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h3 className="text-lg font-medium">Room Management</h3>
+        <p className="text-sm text-gray-500">
+          Configure and manage your monitored rooms
+        </p>
+      </div>
+
+      <div className="space-y-4">
         {rooms.length === 0 && (
           <p className="text-sm text-gray-500">No rooms found.</p>
         )}
         {rooms.map((r, idx) => (
           <div
             key={r.nodeId || idx}
-            className="flex flex-col md:flex-row items-start md:items-center gap-3 p-3 bg-white rounded shadow-sm overflow-hidden"
+            className="bg-white rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center gap-4"
           >
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-800 truncate">
-                {r.roomName}
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="w-14 h-14 bg-slate-900/10 rounded-lg flex items-center justify-center">
+                <FaHome className="text-2xl md:text-3xl text-gray-800" />
               </div>
-              <div className="text-xs text-gray-500">
-                {r.nodeId || "unknown"}
-              </div>
-              <div className="mt-1 flex gap-2 flex-wrap">
-                {r.archived && (
-                  <span className="text-xs bg-gray-200 text-gray-800 px-2 py-0.5 rounded">
-                    Archived
-                  </span>
+              <div className="w-full">
+                {/* Title area: show input in edit mode, otherwise plain title */}
+                {editingMap[r.nodeId] ? (
+                  <input
+                    type="text"
+                    className="w-full text-lg md:text-xl font-semibold text-slate-900 uppercase border rounded px-3 py-2"
+                    value={edited[r.nodeId] ?? r.roomName}
+                    onChange={(e) =>
+                      setEdited((s) => ({ ...s, [r.nodeId]: e.target.value }))
+                    }
+                  />
+                ) : (
+                  <div className="text-base md:text-lg font-semibold text-slate-900 uppercase">
+                    {r.roomName}
+                  </div>
                 )}
-                {r.onRepair && (
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-                    On repair
+                <div className="flex items-center gap-3 mt-2">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      r.status === "Active" && !r.archived
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-gray-200 text-gray-700"
+                    }`}
+                  >
+                    {r.status === "Active" && !r.archived
+                      ? "Active"
+                      : r.archived
+                      ? "Archived"
+                      : r.status}
                   </span>
-                )}
+                  <div className="text-xs text-gray-500">
+                    Node ID:{" "}
+                    <span className="font-medium text-gray-700">
+                      {r.nodeId || "unknown"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch md:items-center gap-2">
-              <input
-                type="text"
-                className="border-[.5px] rounded px-2 py-1 text-sm w-full md:w-56 flex-1 min-w-0"
-                value={edited[r.nodeId] ?? r.roomName}
-                onChange={(e) =>
-                  setEdited((s) => ({ ...s, [r.nodeId]: e.target.value }))
-                }
-                placeholder="Custom name"
-              />
+            <div className="flex-1"></div>
 
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  className="px-3 py-1 bg-indigo-600 text-white rounded text-sm"
-                  onClick={() =>
-                    showConfirm({
-                      title: "Save room name",
-                      message: `Save new name "${
-                        edited[r.nodeId] ?? r.roomName
-                      }" for ${r.roomName}?`,
-                      onConfirm: () => saveName(r.nodeId),
-                    })
-                  }
-                >
-                  Save
-                </button>
-                <button
-                  className="px-3 py-1 bg-gray-600 text-white rounded text-sm"
-                  onClick={() =>
-                    showConfirm({
-                      title: r.archived ? "Unarchive room" : "Archive room",
-                      message: r.archived
-                        ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
-                        : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
-                      onConfirm: () => toggleArchive(r.nodeId),
-                    })
-                  }
-                >
-                  {r.archived ? "Unarchive" : "Archive"}
-                </button>
-                <button
-                  className="px-3 py-1 bg-yellow-600 text-white rounded text-sm"
-                  onClick={() =>
-                    showConfirm({
-                      title: r.onRepair
-                        ? "Mark room OK"
-                        : "Mark room for repair",
-                      message: r.onRepair
-                        ? `Mark ${r.roomName} as OK (remove repair flag)?`
-                        : `Mark ${r.roomName} as on repair?`,
-                      onConfirm: () => toggleRepair(r.nodeId),
-                    })
-                  }
-                >
-                  {r.onRepair ? "Mark OK" : "Mark Repair"}
-                </button>
-                <button
-                  className="px-3 py-1 bg-red-600 text-white rounded text-sm"
-                  onClick={() =>
-                    showConfirm({
-                      title: "Remove room",
-                      message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
-                      onConfirm: removeRoom(r.nodeId),
-                      showDeleteOption: true,
-                    })
-                  }
-                >
-                  Remove
-                </button>
+            <div className="w-full md:w-auto flex items-center gap-3">
+              <div className="flex gap-2">
+                {editingMap[r.nodeId] ? (
+                  <>
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-full text-sm"
+                      onClick={async () => {
+                        await saveName(r.nodeId);
+                        setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
+                      }}
+                    >
+                      <FaEdit className="w-4 h-4 text-white" />
+                      Save
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm"
+                      onClick={() => {
+                        setEdited((s) => ({ ...s, [r.nodeId]: r.roomName }));
+                        setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-full text-sm"
+                      onClick={() =>
+                        setEditingMap((s) => ({ ...s, [r.nodeId]: true }))
+                      }
+                    >
+                      <FaEdit className="w-4 h-4 text-white" />
+                      Edit
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm flex items-center gap-2"
+                      onClick={() =>
+                        showConfirm({
+                          title: r.archived ? "Unarchive room" : "Archive room",
+                          message: r.archived
+                            ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
+                            : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
+                          onConfirm: () => toggleArchive(r.nodeId),
+                        })
+                      }
+                    >
+                      <FaArchive className="w-4 h-4 text-white" />
+                      {r.archived ? "Unarchive" : "Archive"}
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-red-600 text-white rounded-full text-sm flex items-center gap-2"
+                      onClick={() =>
+                        showConfirm({
+                          title: "Remove room",
+                          message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
+                          onConfirm: removeRoom(r.nodeId),
+                          showDeleteOption: true,
+                        })
+                      }
+                    >
+                      <FaTrash className="w-4 h-4 text-white" />
+                      Remove
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
