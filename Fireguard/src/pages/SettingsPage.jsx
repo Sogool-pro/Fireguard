@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useRoom } from "../context/RoomContext";
-import { FaHome, FaEdit, FaArchive, FaTrash } from "react-icons/fa";
+import { FaHome, FaEdit, FaArchive, FaTrash, FaPhone, FaPlus } from "react-icons/fa";
 import { db } from "../firebase";
-import { ref, set, remove, get } from "firebase/database";
+import { ref, set, remove, onValue } from "firebase/database";
 
 export default function SettingsPage() {
   const { rooms, setRooms } = useRoom();
@@ -22,6 +22,16 @@ export default function SettingsPage() {
   });
   const [processing, setProcessing] = useState(false);
 
+  // Phone numbers state
+  const [phoneNumbers, setPhoneNumbers] = useState([]);
+  const [phoneModal, setPhoneModal] = useState({
+    open: false,
+    mode: "add", // "add" or "edit"
+    id: null,
+    label: "",
+    number: "",
+  });
+
   useEffect(() => {
     const map = {};
     rooms.forEach((r) => {
@@ -35,6 +45,31 @@ export default function SettingsPage() {
     });
     setEditingMap(editState);
   }, [rooms]);
+
+  // Load phone numbers from Firebase with real-time listener
+  useEffect(() => {
+    const phoneNumbersRef = ref(db, "phone_numbers");
+    const unsubscribe = onValue(
+      phoneNumbersRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const phones = Object.entries(data).map(([id, phone]) => ({
+            id,
+            ...phone,
+          }));
+          setPhoneNumbers(phones);
+        } else {
+          setPhoneNumbers([]);
+        }
+      },
+      (err) => {
+        console.error("Failed to load phone numbers:", err);
+        setPhoneNumbers([]);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
 
   const saveName = async (nodeId) => {
     const name = edited[nodeId] ?? "";
@@ -156,6 +191,92 @@ export default function SettingsPage() {
       setProcessing(false);
       setConfirm({ open: false, title: "", message: "", onConfirm: null });
     }
+  };
+
+  // Phone number management functions
+  const openAddPhoneModal = () => {
+    setPhoneModal({
+      open: true,
+      mode: "add",
+      id: null,
+      label: "",
+      number: "",
+    });
+  };
+
+  const openEditPhoneModal = (phone) => {
+    setPhoneModal({
+      open: true,
+      mode: "edit",
+      id: phone.id,
+      label: phone.label || "",
+      number: phone.number || "",
+    });
+  };
+
+  const closePhoneModal = () => {
+    setPhoneModal({
+      open: false,
+      mode: "add",
+      id: null,
+      label: "",
+      number: "",
+    });
+  };
+
+  const savePhoneNumber = async () => {
+    if (!phoneModal.label.trim() || !phoneModal.number.trim()) {
+      alert("Please fill in both label and phone number");
+      return;
+    }
+
+    try {
+      if (phoneModal.mode === "add") {
+        // Generate a new ID
+        const newId = `phone_${Date.now()}`;
+        await set(ref(db, `phone_numbers/${newId}`), {
+          label: phoneModal.label.trim(),
+          number: phoneModal.number.trim(),
+        });
+        setPhoneNumbers((prev) => [
+          ...prev,
+          { id: newId, label: phoneModal.label.trim(), number: phoneModal.number.trim() },
+        ]);
+      } else {
+        // Edit existing
+        await set(ref(db, `phone_numbers/${phoneModal.id}`), {
+          label: phoneModal.label.trim(),
+          number: phoneModal.number.trim(),
+        });
+        setPhoneNumbers((prev) =>
+          prev.map((p) =>
+            p.id === phoneModal.id
+              ? { ...p, label: phoneModal.label.trim(), number: phoneModal.number.trim() }
+              : p
+          )
+        );
+      }
+      closePhoneModal();
+    } catch (err) {
+      console.error("Failed to save phone number:", err);
+      alert("Failed to save phone number");
+    }
+  };
+
+  const deletePhoneNumber = (phoneId) => {
+    showConfirm({
+      title: "Delete phone number",
+      message: "Are you sure you want to delete this phone number?",
+      onConfirm: async () => {
+        try {
+          await remove(ref(db, `phone_numbers/${phoneId}`));
+          setPhoneNumbers((prev) => prev.filter((p) => p.id !== phoneId));
+        } catch (err) {
+          console.error("Failed to delete phone number:", err);
+          alert("Failed to delete phone number");
+        }
+      },
+    });
   };
 
   return (
@@ -299,6 +420,135 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
+
+      {/* Phone Numbers Section */}
+      <div className="mt-12 mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium">Phone Numbers</h3>
+            <p className="text-sm text-gray-500">
+              Manage emergency and notification contacts
+            </p>
+          </div>
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
+            onClick={openAddPhoneModal}
+          >
+            <FaPlus className="w-4 h-4" />
+            Add Phone Number
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {phoneNumbers.length === 0 && (
+            <p className="text-sm text-gray-500">No phone numbers found.</p>
+          )}
+          {phoneNumbers.map((phone) => (
+            <div
+              key={phone.id}
+              className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-4"
+            >
+              <div className="flex items-center gap-4 w-full md:w-auto flex-1">
+                <div className="w-14 h-14 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FaPhone className="text-2xl text-violet-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-base font-semibold text-gray-900">
+                    {phone.label}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {phone.number}
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full md:w-auto flex items-center gap-3">
+                <button
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                  onClick={() => openEditPhoneModal(phone)}
+                >
+                  <FaEdit className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                  onClick={() => deletePhoneNumber(phone.id)}
+                >
+                  <FaTrash className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Phone Number Modal */}
+      {phoneModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="phone-modal-title"
+        >
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+            <h3
+              id="phone-modal-title"
+              className="text-lg font-semibold text-gray-900 mb-4"
+            >
+              {phoneModal.mode === "add" ? "Add Phone Number" : "Edit Phone Number"}
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Label
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600"
+                  placeholder="e.g., Emergency Contact"
+                  value={phoneModal.label}
+                  onChange={(e) =>
+                    setPhoneModal((prev) => ({ ...prev, label: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600"
+                  placeholder="e.g., +1 (555) 123-4567"
+                  value={phoneModal.number}
+                  onChange={(e) =>
+                    setPhoneModal((prev) => ({ ...prev, number: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                onClick={closePhoneModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 transition-colors"
+                onClick={savePhoneNumber}
+              >
+                {phoneModal.mode === "add" ? "Add" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirmation Modal */}
       {confirm.open && (
         <div
