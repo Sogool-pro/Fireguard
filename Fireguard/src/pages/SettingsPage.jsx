@@ -228,8 +228,8 @@ export default function SettingsPage() {
 
             <div className="flex-1"></div>
 
-            <div className="w-full md:w-auto flex flex-col md:flex-row items-start md:items-center gap-3">
-              <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            <div className="w-full md:w-auto flex items-center gap-3">
+              <div className="flex gap-2">
                 {editingMap[r.nodeId] ? (
                   <>
                     <button
@@ -307,14 +307,37 @@ export default function SettingsPage() {
           aria-modal="true"
           aria-labelledby="confirm-title"
         >
-          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 p-4">
-            <h3 id="confirm-title" className="text-lg font-semibold mb-2">
-              {confirm.title}
-            </h3>
-            <p className="text-sm text-gray-700 mb-4">{confirm.message}</p>
-            <div className="mb-4">
-              {confirm.showDeleteOption && (
-                <label className="flex items-center gap-2 mb-2 text-sm">
+          <div className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-6">
+            {/* Icon + Title */}
+            <div className="flex items-start gap-4 mb-4">
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  confirm.showDeleteOption ? "bg-red-100" : "bg-slate-700"
+                }`}
+              >
+                {confirm.showDeleteOption ? (
+                  <FaTrash className="w-5 h-5 text-red-600" />
+                ) : (
+                  <FaArchive className="w-5 h-5 text-white" />
+                )}
+              </div>
+              <div>
+                <h3
+                  id="confirm-title"
+                  className="text-lg font-semibold text-gray-900"
+                >
+                  {confirm.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Message */}
+            <p className="text-sm text-gray-700 mb-6">{confirm.message}</p>
+
+            {/* Delete Option Checkbox */}
+            {confirm.showDeleteOption && (
+              <div className="mb-6">
+                <label className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={confirm.deleteOption}
@@ -324,15 +347,19 @@ export default function SettingsPage() {
                         deleteOption: !prev.deleteOption,
                       }))
                     }
-                    className="w-4 h-4"
+                    className="w-5 h-5 accent-red-600 cursor-pointer"
                   />
-                  <span>Also delete sensor data and related alerts</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    Also delete sensor data and related alerts
+                  </span>
                 </label>
-              )}
-            </div>
-            <div className="flex justify-end gap-2">
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3">
               <button
-                className="px-3 py-1 rounded border"
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                 onClick={() =>
                   setConfirm({
                     open: false,
@@ -346,7 +373,7 @@ export default function SettingsPage() {
                 Cancel
               </button>
               <button
-                className="px-3 py-1 bg-red-600 text-white rounded"
+                className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
                 onClick={handleConfirm}
                 disabled={processing}
               >

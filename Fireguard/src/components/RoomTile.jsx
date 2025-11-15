@@ -139,7 +139,7 @@ export default function RoomTile(props) {
         </div>
         <div>
           <div className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-            Smoke or Gas
+            Smoke and Gas
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
             {room.isOffline ? 0 : room.smoke}

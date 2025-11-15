@@ -116,7 +116,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-5 gap-x-6 text-sm mx-auto mt-2">
                 <div className="font-semibold">Temperature</div>
-                <div className="font-semibold">Gas and Smoke</div>
+                <div className="font-semibold">Smoke and Gas</div>
                 <div className="font-semibold">Carbon monoxide</div>
                 <div className="font-semibold">Humidity</div>
                 <div className="font-semibold">Flame</div>
