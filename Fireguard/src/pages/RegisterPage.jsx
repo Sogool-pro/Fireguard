@@ -106,15 +106,6 @@ export default function RegisterPage() {
               {loading ? "Creating..." : "Create account"}
             </button>
           </form>
-          <div className="mt-4 text-sm">
-            Already have an account?{" "}
-            <button
-              onClick={() => navigate("/login")}
-              className="text-indigo-600 underline"
-            >
-              Login
-            </button>
-          </div>
         </div>
       </div>
     </div>

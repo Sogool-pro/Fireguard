@@ -163,9 +163,6 @@ export default function SettingsPage() {
       <div className="flex items-start gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold">Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage your account settings and preferences
-          </p>
         </div>
       </div>
 
@@ -231,8 +228,8 @@ export default function SettingsPage() {
 
             <div className="flex-1"></div>
 
-            <div className="w-full md:w-auto flex items-center gap-3">
-              <div className="flex gap-2">
+            <div className="w-full md:w-auto flex flex-col md:flex-row items-start md:items-center gap-3">
+              <div className="flex flex-wrap gap-2 w-full md:w-auto">
                 {editingMap[r.nodeId] ? (
                   <>
                     <button
