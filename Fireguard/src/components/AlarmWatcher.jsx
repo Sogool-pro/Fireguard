@@ -38,7 +38,7 @@ export default function AlarmWatcher() {
     rooms.forEach((room) => {
       const alarmMsg = getAlarmMessage(room);
       if (alarmMsg && !prevAlarms.current[room.roomName]) {
-        showAlarm(alarmMsg);
+        showAlarm({ room });
         prevAlarms.current[room.roomName] = true;
       } else if (!alarmMsg) {
         prevAlarms.current[room.roomName] = false;
