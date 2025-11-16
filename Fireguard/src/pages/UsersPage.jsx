@@ -130,7 +130,7 @@ export default function UsersPage() {
               onClick={() => setRoleFilter("all")}
               className={`px-3 py-1 rounded-full border ${
                 roleFilter === "all"
-                  ? "bg-indigo-50 text-indigo-700"
+                  ? "bg-red-50 text-red-700"
                   : "text-gray-600 bg-white"
               }`}
             >
@@ -140,7 +140,7 @@ export default function UsersPage() {
               onClick={() => setRoleFilter("admin")}
               className={`px-3 py-1 rounded-full border ${
                 roleFilter === "admin"
-                  ? "bg-indigo-50 text-indigo-700"
+                  ? "bg-red-50 text-red-700"
                   : "text-gray-600 bg-white"
               }`}
             >
@@ -150,7 +150,7 @@ export default function UsersPage() {
               onClick={() => setRoleFilter("user")}
               className={`px-3 py-1 rounded-full border ${
                 roleFilter === "user"
-                  ? "bg-indigo-50 text-indigo-700"
+                  ? "bg-red-50 text-red-700"
                   : "text-gray-600 bg-white"
               }`}
             >
@@ -159,7 +159,7 @@ export default function UsersPage() {
           </div>
           <button
             onClick={() => setAddUserModal(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition-colors font-medium text-sm sm:text-base whitespace-nowrap"
+            className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition-colors font-medium text-sm sm:text-base whitespace-nowrap"
           >
             Add User
           </button>
@@ -198,7 +198,7 @@ export default function UsersPage() {
                 <div
                   className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold`}
                   style={{
-                    backgroundColor: u.role === "admin" ? "#6d28d9" : "#06b6d4",
+                    backgroundColor: u.role === "admin" ? "#dc2626" : "#6b7280",
                   }}
                 >
                   {initials(u.displayName, u.email)}
@@ -212,8 +212,8 @@ export default function UsersPage() {
                     <span
                       className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${
                         u.role === "admin"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-blue-100 text-blue-700"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {u.role || "user"}
@@ -334,7 +334,7 @@ export default function UsersPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-6 py-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-between">
+            <div className="px-6 py-5 bg-gradient-to-r from-red-600 to-red-700 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                   <svg
@@ -380,7 +380,7 @@ export default function UsersPage() {
                   className={`w-12 h-12 rounded-lg flex items-center justify-center text-white font-semibold`}
                   style={{
                     backgroundColor:
-                      editingUser.role === "admin" ? "#6d28d9" : "#06b6d4",
+                      editingUser.role === "admin" ? "#dc2626" : "#6b7280",
                   }}
                 >
                   {initials(editingUser.displayName, editingUser.email)}
@@ -456,7 +456,7 @@ export default function UsersPage() {
                       alert("Failed to update user. See console for details.");
                     }
                   }}
-                  className="px-4 py-2 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
+                  className="px-4 py-2 rounded-md bg-gradient-to-r from-red-600 to-red-700 text-white"
                 >
                   Save Changes
                 </button>
@@ -479,9 +479,9 @@ export default function UsersPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500/30 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-red-500/30 flex items-center justify-center flex-shrink-0">
                   <UserPlus className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -511,7 +511,7 @@ export default function UsersPage() {
                   </div>
                   <input
                     type="text"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="Enter full name"
                     value={newUser.fullName}
                     onChange={(e) =>
@@ -533,7 +533,7 @@ export default function UsersPage() {
                   </div>
                   <input
                     type="email"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="user@example.com"
                     value={newUser.email}
                     onChange={(e) =>
@@ -554,7 +554,7 @@ export default function UsersPage() {
                     <FaShieldAlt className="w-4 h-4" />
                   </div>
                   <select
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none bg-white"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none bg-white"
                     value={newUser.role}
                     onChange={(e) =>
                       setNewUser({ ...newUser, role: e.target.value })
@@ -610,7 +610,7 @@ export default function UsersPage() {
                   </div>
                   <input
                     type="password"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="Enter password"
                     value={newUser.password}
                     onChange={(e) =>
@@ -678,7 +678,7 @@ export default function UsersPage() {
                       setCreatingUser(false);
                     }
                   }}
-                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
+                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
                   disabled={creatingUser}
                 >
                   <UserPlus className="w-4 h-4" />

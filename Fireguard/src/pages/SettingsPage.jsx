@@ -57,7 +57,9 @@ export default function SettingsPage() {
     // Preserve editing states - only reset for rooms that no longer exist
     setEditingMap((prev) => {
       const updated = { ...prev };
-      const currentRoomIds = new Set(rooms.map((r) => r.nodeId).filter(Boolean));
+      const currentRoomIds = new Set(
+        rooms.map((r) => r.nodeId).filter(Boolean)
+      );
       // Remove editing state for rooms that no longer exist
       Object.keys(updated).forEach((nodeId) => {
         if (!currentRoomIds.has(nodeId)) {
@@ -373,7 +375,7 @@ export default function SettingsPage() {
                 {editingMap[r.nodeId] ? (
                   <>
                     <button
-                      className="flex items-center gap-2 px-3 md:px-4 py-2 bg-violet-600 text-white rounded-lg text-sm cursor-pointer flex-shrink-0"
+                      className="flex items-center gap-2 px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm cursor-pointer flex-shrink-0"
                       onClick={async () => {
                         await saveName(r.nodeId);
                         setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
@@ -430,7 +432,7 @@ export default function SettingsPage() {
                       }
                     >
                       <FaTrash className="w-4 h-4 text-white" />
-                      Remove
+                      Delete
                     </button>
                   </>
                 )}
@@ -450,7 +452,7 @@ export default function SettingsPage() {
             </p>
           </div>
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
             onClick={openAddPhoneModal}
           >
             <FaPlus className="w-4 h-4" />
@@ -468,8 +470,8 @@ export default function SettingsPage() {
               className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-4"
             >
               <div className="flex items-center gap-4 w-full md:w-auto flex-1">
-                <div className="w-14 h-14 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FaPhone className="text-2xl text-violet-600" />
+                <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FaPhone className="text-2xl text-red-600" />
                 </div>
                 <div className="flex-1">
                   <div className="text-base font-semibold text-gray-900">
@@ -527,7 +529,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="e.g., Emergency Contact"
                   value={phoneModal.label}
                   onChange={(e) =>
@@ -545,7 +547,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="tel"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="e.g., +639456789012"
                   value={phoneModal.number}
                   onChange={(e) =>
@@ -566,7 +568,7 @@ export default function SettingsPage() {
                 Cancel
               </button>
               <button
-                className="px-6 py-2 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 transition-colors cursor-pointer"
+                className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer"
                 onClick={savePhoneNumber}
               >
                 {phoneModal.mode === "add" ? "Add" : "Save"}

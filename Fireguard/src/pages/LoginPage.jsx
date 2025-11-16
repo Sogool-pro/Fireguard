@@ -3,6 +3,7 @@ import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import fireguardLogo from "../assets/fireguard-logo.png";
+import bgAlpha from "../assets/bg-alpha.jpg";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -24,7 +25,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex w-[1000px] max-w-full h-[640px] rounded-3xl shadow-2xl overflow-hidden">
         {/* Left promotional panel */}
-        <div className="w-1/2 bg-gradient-to-br from-violet-800 via-indigo-700 to-indigo-600 text-white p-12 relative hidden md:flex flex-col justify-between">
+        <div 
+          className="w-1/2 text-white p-12 relative hidden md:flex flex-col justify-between"
+          style={{
+            backgroundImage: `linear-gradient(to bottom right, rgba(220, 38, 38, 0.8), rgba(185, 28, 28, 0.7)), url(${bgAlpha})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
           <div>
             <h2 className="text-sm opacity-90">
               Monitor Your Rooms with Confidence
@@ -116,26 +125,20 @@ export default function LoginPage() {
         </div>
 
         {/* Right form panel */}
-        <div className="w-full md:w-1/2 bg-white flex items-center justify-center">
+        <div className="w-full md:w-1/2 bg-white/95 backdrop-blur-sm flex items-center justify-center">
           <div className="max-w-md w-full p-10">
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg mb-6">
-                <img
-                  src={fireguardLogo}
-                  alt="Fireguard"
-                  className="w-9 h-9 object-contain"
-                />
-              </div>
-              <h2 className="text-2xl font-semibold mb-2">
+              <img src={fireguardLogo} alt="Fireguard" className="w-50 h-50" />
+              <h2 className="text-2xl font-semibold mb-2 text-gray-800">
                 Login to Fireguard
               </h2>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-gray-600 mb-6">
                 Start monitoring your rooms today
               </p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
-              <label className="block text-sm text-gray-700">
+              <label className="block text-sm text-gray-700 font-medium">
                 Email Address
               </label>
               <input
@@ -143,22 +146,22 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
 
-              <label className="block text-sm text-gray-700">Password</label>
+              <label className="block text-sm text-gray-700 font-medium">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700"
+                  className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
                 >
                   Login
                 </button>

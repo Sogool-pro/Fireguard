@@ -10,10 +10,11 @@ import {
   BarChart3,
   UserCircle2,
   Settings,
+  User,
 } from "lucide-react";
 import FireguardImg from "../assets/fireguard-logo.png";
-import Occupied from "../assets/occupied.svg";
 import { useNotification } from "../context/NotificationContext";
+import bgAlpha from "../assets/bg-alpha.jpg";
 
 const SidebarContext = createContext();
 
@@ -78,8 +79,16 @@ export default function Sidebar() {
           expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative"
         } ${expanded ? "w-64" : "w-20"}`}
       >
-        <nav className="h-full flex flex-col bg-blue-50 border-r-blue-50 shadow-[8px_0_17px_rgba(0,0,0,0.07)]">
-          <div className="p-4 pb-2 flex justify-between items-center relative">
+        <nav 
+          className="h-full flex flex-col border-r-blue-50 shadow-[8px_0_17px_rgba(0,0,0,0.07)] relative"
+          style={{
+            backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4)), url(${bgAlpha})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          <div className="p-4 pb-2 flex justify-between items-center relative z-10">
             <img
               src={FireguardImg}
               className={`transition-all duration-300 ease-in-out ${
@@ -104,7 +113,7 @@ export default function Sidebar() {
           </div>
 
           <SidebarContext.Provider value={{ expanded }}>
-            <ul className="flex-1 px-3">
+            <ul className="flex-1 px-3 relative z-10">
               {navItems
                 .filter((item) => {
                   if (item.adminOnly) {
@@ -126,23 +135,37 @@ export default function Sidebar() {
             </ul>
           </SidebarContext.Provider>
 
-          <div className="flex p-3 relative">
-            <img src={Occupied} alt="" className="w-7 h-7 rounded-md" />
+          <div className="flex p-3 relative z-10">
+            <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0">
+              {user?.displayName || user?.email ? (
+                <span className="text-white text-xs font-semibold">
+                  {(() => {
+                    const name = user?.displayName || user?.email?.split("@")[0] || "U";
+                    if (name.length <= 2) return name.toUpperCase().slice(0, 2);
+                    const parts = name.trim().split(" ");
+                    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                  })()}
+                </span>
+              ) : (
+                <User size={14} className="text-white" />
+              )}
+            </div>
             <div
               className={`flex justify-between items-center overflow-hidden transition-all duration-300 ease-in-out ${
                 expanded ? "w-52 ml-3 opacity-100" : "w-0 opacity-0"
               }`}
             >
               <div className="leading-4">
-                <h4 className="font-semibold">
+                <h4 className="font-semibold text-white">
                   {user?.displayName || user?.email?.split("@")[0] || "User"}
                 </h4>
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-white/80">
                   {user?.email || ""}
                 </span>
               </div>
               <button
-                className="p-1 rounded-full hover:bg-gray-200"
+                className="p-1 rounded-full hover:bg-white/20 text-white"
                 onClick={() => setMenuOpen((open) => !open)}
               >
                 <MoreVertical size={15} />
@@ -190,8 +213,8 @@ function SidebarItem({ icon, text, to, active, alert }) {
         to={to}
         className={`relative flex items-center py-2 px-4 my-1 font-medium rounded-md cursor-pointer transition-all duration-300 ease-in-out ${
           active
-            ? "bg-gradient-to-tr from-indigo-200 to-indigo-100 text-indigo-800"
-            : "hover:bg-indigo-50 text-gray-600"
+            ? "bg-white/20 text-white backdrop-blur-sm"
+            : "hover:bg-white/10 text-white/80"
         }`}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -204,7 +227,7 @@ function SidebarItem({ icon, text, to, active, alert }) {
           </span>
         ) : (
           hovered && (
-            <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-md shadow-lg z-10 whitespace-nowrap border border-gray-200">
+            <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-gray-900 text-white rounded-md shadow-lg z-10 whitespace-nowrap border border-gray-700">
               {text}
             </span>
           )

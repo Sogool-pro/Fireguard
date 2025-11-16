@@ -118,11 +118,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="bg-white h-16 px-4 flex items-center justify-between border-b border-gray-200">
+      <header className="bg-red-600 h-16 px-4 flex items-center justify-between border-b border-red-700">
         {/* Search Bar */}
         <div className="flex items-center flex-1 max-w-xl">
           <div className="relative w-full">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2 ml-4">
+            <h1 className="text-2xl font-bold text-white mb-2 ml-4">
               {pageTitle}
             </h1>
           </div>
@@ -133,14 +133,14 @@ export default function Header() {
           {/* Notifications */}
           <div className="relative" ref={notifRef}>
             <button
-              className="relative p-2 hover:bg-gray-100 rounded-full"
+              className="relative p-2 hover:bg-red-700 rounded-full"
               onClick={() => {
                 setShowNotifications((v) => !v);
                 setLogsAlert(false);
               }}
               aria-label="Show notifications"
             >
-              <Bell size={20} className="text-gray-600" />
+              <Bell size={20} className="text-white" />
               {logsAlert ? (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               ) : null}
@@ -319,11 +319,11 @@ export default function Header() {
           </div>
 
           {/* Profile */}
-          <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg">
-            <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
+          <button className="flex items-center gap-2 p-2 rounded-lg ">
+            <div className="w-8 h-8  rounded-full bg-green-500 flex items-center justify-center border border-white/30">
               <User size={20} className="text-white" />
             </div>
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-white">
               {authLoading
                 ? "..."
                 : role

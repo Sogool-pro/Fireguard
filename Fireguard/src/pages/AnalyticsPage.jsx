@@ -251,6 +251,8 @@ const COLORS = ["#2563eb", "#facc15", "#f87171", "#34d399", "#a78bfa"];
 export default function AnalyticsPage() {
   const [alerts, setAlerts] = useState([]);
   const { rooms } = useRoom();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     const alertsRef = ref(db, "alerts");
@@ -265,19 +267,158 @@ export default function AnalyticsPage() {
     return () => unsub();
   }, []);
 
-  // Compute chart data from live alerts
-  const monthlyData = getMonthlyData(alerts);
-  const alertTypeData = getAlertTypeData(alerts);
-  const roomData = getRoomData(alerts, rooms);
-  const severityData = getSeverityData(alerts);
-  const roomComparisonData = getRoomComparisonData(alerts, rooms);
-  const realTimeSensorData = getRecentSensorData(alerts);
-  const roomSeverityData = getRoomSeverityData(alerts, rooms);
-  const sensorBreakdownData = getSensorBreakdownData(alerts);
-  const alertTrendsData = getAlertTrendsData(alerts);
+  // Helper function to set date range for quick filters
+  const setQuickFilter = (filterType) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch (filterType) {
+      case "today":
+        const todayStr = today.toISOString().split("T")[0];
+        setStartDate(todayStr);
+        setEndDate(todayStr);
+        break;
+      case "week":
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
+        setStartDate(weekStart.toISOString().split("T")[0]);
+        setEndDate(weekEnd.toISOString().split("T")[0]);
+        break;
+      case "month":
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        setStartDate(monthStart.toISOString().split("T")[0]);
+        setEndDate(monthEnd.toISOString().split("T")[0]);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Filter alerts by date range
+  const filterAlertsByDate = (alertsList) => {
+    if (!startDate && !endDate) return alertsList;
+    
+    return alertsList.filter((alert) => {
+      if (!alert.timestamp) return false;
+      const alertDate = parseTimestamp(alert.timestamp);
+      if (!alertDate) return false;
+      
+      const alertDateOnly = new Date(alertDate.getFullYear(), alertDate.getMonth(), alertDate.getDate());
+      
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // Include the entire end date
+        return alertDateOnly >= start && alertDateOnly <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        return alertDateOnly >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return alertDateOnly <= end;
+      }
+      return true;
+    });
+  };
+
+  const filteredAlerts = filterAlertsByDate(alerts);
+
+  // Compute chart data from filtered alerts
+  const monthlyData = getMonthlyData(filteredAlerts);
+  const alertTypeData = getAlertTypeData(filteredAlerts);
+  const roomData = getRoomData(filteredAlerts, rooms);
+  const severityData = getSeverityData(filteredAlerts);
+  const roomComparisonData = getRoomComparisonData(filteredAlerts, rooms);
+  const realTimeSensorData = getRecentSensorData(filteredAlerts);
+  const roomSeverityData = getRoomSeverityData(filteredAlerts, rooms);
+  const sensorBreakdownData = getSensorBreakdownData(filteredAlerts);
+  const alertTrendsData = getAlertTrendsData(filteredAlerts);
 
   return (
     <div className="p-4 space-y-6">
+      {/* Date Filter */}
+      <div className="bg-white rounded-xl shadow p-4">
+        <h2 className="text-lg font-bold mb-4">Filter by Date Range</h2>
+        
+        {/* Quick Filter Buttons and Date Inputs in One Row */}
+        <div className="flex flex-col lg:flex-row gap-4 items-end">
+          {/* Quick Filter Buttons */}
+          <div className="flex flex-wrap gap-2 flex-1">
+            <button
+              onClick={() => setQuickFilter("today")}
+              className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setQuickFilter("week")}
+              className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+            >
+              This Week
+            </button>
+            <button
+              onClick={() => setQuickFilter("month")}
+              className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+            >
+              This Month
+            </button>
+          </div>
+
+          {/* Date Inputs */}
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                min={startDate}
+              />
+            </div>
+          </div>
+
+          {/* Clear Filter Button */}
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+            }}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium whitespace-nowrap"
+          >
+            Clear Filter
+          </button>
+        </div>
+        {(startDate || endDate) && (
+          <p className="mt-2 text-sm text-gray-600">
+            Showing {filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''} 
+            {startDate && endDate 
+              ? ` from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`
+              : startDate 
+              ? ` from ${new Date(startDate).toLocaleDateString()} onwards`
+              : ` up to ${new Date(endDate).toLocaleDateString()}`
+            }
+          </p>
+        )}
+      </div>
+
       {/* Alert Trends & Monthly Sensor Alerts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Alert Trends */}
