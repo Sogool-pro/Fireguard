@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useRoom } from "../context/RoomContext";
-import { FaHome, FaEdit, FaArchive, FaTrash, FaPhone, FaPlus } from "react-icons/fa";
+import {
+  FaHome,
+  FaEdit,
+  FaArchive,
+  FaTrash,
+  FaPhone,
+  FaPlus,
+} from "react-icons/fa";
 import { db } from "../firebase";
 import { ref, set, remove, onValue } from "firebase/database";
 
@@ -238,23 +245,14 @@ export default function SettingsPage() {
           label: phoneModal.label.trim(),
           number: phoneModal.number.trim(),
         });
-        setPhoneNumbers((prev) => [
-          ...prev,
-          { id: newId, label: phoneModal.label.trim(), number: phoneModal.number.trim() },
-        ]);
+        // Don't manually update state - the real-time listener will handle it
       } else {
         // Edit existing
         await set(ref(db, `phone_numbers/${phoneModal.id}`), {
           label: phoneModal.label.trim(),
           number: phoneModal.number.trim(),
         });
-        setPhoneNumbers((prev) =>
-          prev.map((p) =>
-            p.id === phoneModal.id
-              ? { ...p, label: phoneModal.label.trim(), number: phoneModal.number.trim() }
-              : p
-          )
-        );
+        // Don't manually update state - the real-time listener will handle it
       }
       closePhoneModal();
     } catch (err) {
@@ -354,7 +352,7 @@ export default function SettingsPage() {
                 {editingMap[r.nodeId] ? (
                   <>
                     <button
-                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-full text-sm"
+                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm cursor-pointer"
                       onClick={async () => {
                         await saveName(r.nodeId);
                         setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
@@ -364,7 +362,7 @@ export default function SettingsPage() {
                       Save
                     </button>
                     <button
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm"
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-pointer"
                       onClick={() => {
                         setEdited((s) => ({ ...s, [r.nodeId]: r.roomName }));
                         setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
@@ -376,16 +374,16 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <button
-                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-full text-sm"
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() =>
                         setEditingMap((s) => ({ ...s, [r.nodeId]: true }))
                       }
                     >
-                      <FaEdit className="w-4 h-4 text-white" />
+                      <FaEdit className="w-4 h-4" />
                       Edit
                     </button>
                     <button
-                      className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm flex items-center gap-2"
+                      className="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer"
                       onClick={() =>
                         showConfirm({
                           title: r.archived ? "Unarchive room" : "Archive room",
@@ -400,7 +398,7 @@ export default function SettingsPage() {
                       {r.archived ? "Unarchive" : "Archive"}
                     </button>
                     <button
-                      className="px-4 py-2 bg-red-600 text-white rounded-full text-sm flex items-center gap-2"
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-colors cursor-pointer"
                       onClick={() =>
                         showConfirm({
                           title: "Remove room",
@@ -431,7 +429,7 @@ export default function SettingsPage() {
             </p>
           </div>
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors cursor-pointer"
             onClick={openAddPhoneModal}
           >
             <FaPlus className="w-4 h-4" />
@@ -464,14 +462,14 @@ export default function SettingsPage() {
 
               <div className="w-full md:w-auto flex items-center gap-3">
                 <button
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
                   onClick={() => openEditPhoneModal(phone)}
                 >
                   <FaEdit className="w-4 h-4" />
                   Edit
                 </button>
                 <button
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
                   onClick={() => deletePhoneNumber(phone.id)}
                 >
                   <FaTrash className="w-4 h-4" />
@@ -496,7 +494,9 @@ export default function SettingsPage() {
               id="phone-modal-title"
               className="text-lg font-semibold text-gray-900 mb-4"
             >
-              {phoneModal.mode === "add" ? "Add Phone Number" : "Edit Phone Number"}
+              {phoneModal.mode === "add"
+                ? "Add Phone Number"
+                : "Edit Phone Number"}
             </h3>
 
             <div className="space-y-4">
@@ -510,7 +510,10 @@ export default function SettingsPage() {
                   placeholder="e.g., Emergency Contact"
                   value={phoneModal.label}
                   onChange={(e) =>
-                    setPhoneModal((prev) => ({ ...prev, label: e.target.value }))
+                    setPhoneModal((prev) => ({
+                      ...prev,
+                      label: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -525,7 +528,10 @@ export default function SettingsPage() {
                   placeholder="e.g., +1 (555) 123-4567"
                   value={phoneModal.number}
                   onChange={(e) =>
-                    setPhoneModal((prev) => ({ ...prev, number: e.target.value }))
+                    setPhoneModal((prev) => ({
+                      ...prev,
+                      number: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -533,13 +539,13 @@ export default function SettingsPage() {
 
             <div className="flex justify-end gap-3 mt-6">
               <button
-                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={closePhoneModal}
               >
                 Cancel
               </button>
               <button
-                className="px-6 py-2 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 transition-colors"
+                className="px-6 py-2 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 transition-colors cursor-pointer"
                 onClick={savePhoneNumber}
               >
                 {phoneModal.mode === "add" ? "Add" : "Save"}

@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { FaTrash } from "react-icons/fa";
-import { firestore } from "../firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { FaTrash, FaUser, FaEnvelope, FaShieldAlt } from "react-icons/fa";
+import { X, UserPlus } from "lucide-react";
+import { firestore, auth } from "../firebase";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { createUserWithEmailAndPassword, updateProfile, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { auth } from "../firebase";
 
 function formatDate(ts) {
   if (!ts) return "-";
@@ -41,6 +41,14 @@ export default function UsersPage() {
     user: null,
   });
   const [processing, setProcessing] = useState(false);
+  const [addUserModal, setAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    fullName: "",
+    email: "",
+    role: "user",
+    password: "",
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
 
   useEffect(() => {
     const col = collection(firestore, "users");
@@ -150,7 +158,7 @@ export default function UsersPage() {
             </button>
           </div>
           <button
-            onClick={() => navigate("/register")}
+            onClick={() => setAddUserModal(true)}
             className="ml-3 bg-indigo-600 text-white px-4 py-2 rounded-full shadow hover:bg-indigo-700"
           >
             Add User
@@ -451,6 +459,230 @@ export default function UsersPage() {
                   className="px-4 py-2 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
                 >
                   Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {addUserModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setAddUserModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-500/30 flex items-center justify-center flex-shrink-0">
+                  <UserPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Add New User</h2>
+                  <p className="text-sm text-white/90">Create a new team member account.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAddUserModal(false)}
+                className="text-white/90 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="p-6">
+              {/* Full Name Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <FaUser className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter full name"
+                    value={newUser.fullName}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, fullName: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Email Address Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <FaEnvelope className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="user@example.com"
+                    value={newUser.email}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, email: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Role Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Role <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <FaShieldAlt className="w-4 h-4" />
+                  </div>
+                  <select
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none bg-white"
+                    value={newUser.role}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, role: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="user">User - Standard Access</option>
+                    <option value="admin">Admin - Full Access</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {newUser.role === "admin"
+                    ? "Admins have full access to all features and settings."
+                    : "Users have standard access to features."}
+                </p>
+              </div>
+
+              {/* Password Field */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="password"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter password"
+                    value={newUser.password}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, password: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setAddUserModal(false);
+                    setNewUser({ fullName: "", email: "", role: "user", password: "" });
+                  }}
+                  className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  disabled={creatingUser}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newUser.fullName.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+                      alert("Please fill in all required fields");
+                      return;
+                    }
+                    setCreatingUser(true);
+                    try {
+                      // Store current user before creating new user
+                      const currentUser = auth.currentUser;
+                      
+                      // Create user with Firebase Auth
+                      const cred = await createUserWithEmailAndPassword(
+                        auth,
+                        newUser.email,
+                        newUser.password
+                      );
+                      const user = cred.user;
+
+                      // Set display name on auth profile
+                      if (newUser.fullName) {
+                        await updateProfile(user, { displayName: newUser.fullName });
+                      }
+
+                      // Create user document in Firestore
+                      await setDoc(doc(firestore, "users", user.uid), {
+                        email: user.email || null,
+                        displayName: newUser.fullName || null,
+                        role: newUser.role || "user",
+                        createdAt: serverTimestamp(),
+                      });
+
+                      // Sign out the newly created user to prevent auto-login
+                      await signOut(auth);
+
+                      // Reset form and close modal
+                      setNewUser({ fullName: "", email: "", role: "user", password: "" });
+                      setAddUserModal(false);
+                    } catch (err) {
+                      console.error("Failed to create user:", err);
+                      alert("Failed to create user: " + err.message);
+                    } finally {
+                      setCreatingUser(false);
+                    }
+                  }}
+                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
+                  disabled={creatingUser}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  {creatingUser ? "Creating..." : "Add User"}
                 </button>
               </div>
             </div>
