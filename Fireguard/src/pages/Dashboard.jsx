@@ -41,7 +41,7 @@ export default function Dashboard() {
               totalRooms={visibleRooms.length}
               alertsToday={alertsToday}
             />
-            <div className="flex flex-wrap justify-center gap-6 px-4">
+            <div className="flex flex-wrap justify-center gap-6 px-4 mb-6 md:mb-0">
               {visibleRooms.map((room, idx) => (
                 <div
                   key={room.nodeId || idx}
@@ -60,10 +60,11 @@ export default function Dashboard() {
           so it stays within the main content area instead of overlaying the sidebar. */}
       <footer className="sticky bottom-0 md:fixed md:left-64 md:right-0 md:bottom-4 w-full max-w-4xl mx-auto z-10">
         <div className="bg-white rounded-xl shadow-md p-3 md:p-3 flex flex-col md:flex-row md:items-center md:justify-center gap-3 md:gap-4 text-xs md:text-sm">
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Mobile toggle to show/hide detailed legend text */}
+          {/* Mobile: Legend label and Show details button in one row */}
+          <div className="md:hidden flex items-center justify-between w-full">
+            <span className="font-semibold text-gray-700">Legend:</span>
             <button
-              className="md:hidden ml-2 text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md"
+              className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md"
               onClick={() => setLegendExpanded((v) => !v)}
               aria-expanded={legendExpanded}
               aria-controls="mobile-legend-details"

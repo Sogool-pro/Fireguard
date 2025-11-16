@@ -44,13 +44,34 @@ export default function SettingsPage() {
     rooms.forEach((r) => {
       if (r.nodeId) map[r.nodeId] = r.roomName;
     });
-    setEdited(map);
-    // reset editing states for current rooms
-    const editState = {};
-    rooms.forEach((r) => {
-      if (r.nodeId) editState[r.nodeId] = false;
+    setEdited((prev) => {
+      // Preserve existing edited values, only update for new rooms
+      const updated = { ...prev };
+      rooms.forEach((r) => {
+        if (r.nodeId && !(r.nodeId in updated)) {
+          updated[r.nodeId] = r.roomName;
+        }
+      });
+      return updated;
     });
-    setEditingMap(editState);
+    // Preserve editing states - only reset for rooms that no longer exist
+    setEditingMap((prev) => {
+      const updated = { ...prev };
+      const currentRoomIds = new Set(rooms.map((r) => r.nodeId).filter(Boolean));
+      // Remove editing state for rooms that no longer exist
+      Object.keys(updated).forEach((nodeId) => {
+        if (!currentRoomIds.has(nodeId)) {
+          delete updated[nodeId];
+        }
+      });
+      // Add false for new rooms that don't have editing state yet
+      rooms.forEach((r) => {
+        if (r.nodeId && !(r.nodeId in updated)) {
+          updated[r.nodeId] = false;
+        }
+      });
+      return updated;
+    });
   }, [rooms]);
 
   // Load phone numbers from Firebase with real-time listener
@@ -347,12 +368,12 @@ export default function SettingsPage() {
 
             <div className="flex-1"></div>
 
-            <div className="w-full md:w-auto flex items-center gap-3">
-              <div className="flex gap-2">
+            <div className="w-full md:w-auto flex items-center justify-end md:justify-start">
+              <div className="flex flex-wrap gap-2 w-full md:w-auto">
                 {editingMap[r.nodeId] ? (
                   <>
                     <button
-                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm cursor-pointer"
+                      className="flex items-center gap-2 px-3 md:px-4 py-2 bg-violet-600 text-white rounded-lg text-sm cursor-pointer flex-shrink-0"
                       onClick={async () => {
                         await saveName(r.nodeId);
                         setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
@@ -362,7 +383,7 @@ export default function SettingsPage() {
                       Save
                     </button>
                     <button
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-pointer"
+                      className="px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-pointer flex-shrink-0"
                       onClick={() => {
                         setEdited((s) => ({ ...s, [r.nodeId]: r.roomName }));
                         setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
@@ -374,7 +395,7 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <button
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-50 transition-colors cursor-pointer flex-shrink-0"
                       onClick={() =>
                         setEditingMap((s) => ({ ...s, [r.nodeId]: true }))
                       }
@@ -383,7 +404,7 @@ export default function SettingsPage() {
                       Edit
                     </button>
                     <button
-                      className="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="px-3 md:px-4 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
                       onClick={() =>
                         showConfirm({
                           title: r.archived ? "Unarchive room" : "Archive room",
@@ -398,7 +419,7 @@ export default function SettingsPage() {
                       {r.archived ? "Unarchive" : "Archive"}
                     </button>
                     <button
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-colors cursor-pointer"
+                      className="px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-colors cursor-pointer flex-shrink-0"
                       onClick={() =>
                         showConfirm({
                           title: "Remove room",
@@ -525,7 +546,7 @@ export default function SettingsPage() {
                 <input
                   type="tel"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600"
-                  placeholder="e.g., +1 (555) 123-4567"
+                  placeholder="e.g., +639456789012"
                   value={phoneModal.number}
                   onChange={(e) =>
                     setPhoneModal((prev) => ({

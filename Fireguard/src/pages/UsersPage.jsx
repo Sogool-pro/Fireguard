@@ -96,14 +96,14 @@ export default function UsersPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold">Users</h1>
           <p className="text-sm text-gray-500">
             Manage your team members and their account permissions
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="hidden sm:flex items-center bg-white border rounded-md px-3 py-2 shadow-sm">
             <svg
               className="w-4 h-4 text-gray-400 mr-2"
@@ -159,14 +159,14 @@ export default function UsersPage() {
           </div>
           <button
             onClick={() => setAddUserModal(true)}
-            className="ml-3 bg-indigo-600 text-white px-4 py-2 rounded-full shadow hover:bg-indigo-700"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition-colors font-medium text-sm sm:text-base whitespace-nowrap"
           >
             Add User
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-500">Total Users</div>
           <div className="text-2xl font-semibold">{totals.total}</div>
