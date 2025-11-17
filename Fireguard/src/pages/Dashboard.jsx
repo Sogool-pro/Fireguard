@@ -104,8 +104,8 @@ export default function Dashboard() {
 
             {/* Desktop: legend layout matching the provided screenshot (centered) */}
             <div className="hidden md:flex md:items-center md:justify-center md:gap-6 w-full">
-              <div className="flex flex-col items-start ml-8 mr-4">
-                <span className="font-semibold text-white mb-2">Legend:</span>
+              <div className="flex flex-col items-start ml-16 mr-4">
+                <span className="font-semibold text-white mb-2 ml-16">Legend:</span>
                 <div className="flex items-center gap-2 mb-2 ml-16">
                   <span className="inline-block w-4 h-4 rounded-[4px] bg-yellow-400 animate-pulse"></span>
                   <span className="text-gray-300">Warning</span>
