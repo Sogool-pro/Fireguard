@@ -2,8 +2,22 @@ import React, { useEffect, useState, useMemo } from "react";
 import { FaTrash, FaUser, FaEnvelope, FaShieldAlt } from "react-icons/fa";
 import { X, UserPlus } from "lucide-react";
 import { firestore, auth } from "../firebase";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { createUserWithEmailAndPassword, updateProfile, signOut } from "firebase/auth";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  deleteDoc,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+} from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 function formatDate(ts) {
@@ -486,7 +500,9 @@ export default function UsersPage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">Add New User</h2>
-                  <p className="text-sm text-white/90">Create a new team member account.</p>
+                  <p className="text-sm text-white/90">
+                    Create a new team member account.
+                  </p>
                 </div>
               </div>
               <button
@@ -543,8 +559,7 @@ export default function UsersPage() {
                   />
                 </div>
               </div>
-
-              {/* Role Field */}
+              {/* Fixed Role Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-900 mb-1">
                   Role <span className="text-red-500">*</span>
@@ -553,37 +568,18 @@ export default function UsersPage() {
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                     <FaShieldAlt className="w-4 h-4" />
                   </div>
-                  <select
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none bg-white"
-                    value={newUser.role}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, role: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="user">User - Standard Access</option>
-                    <option value="admin">Admin - Full Access</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
+                  <input
+                    type="text"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                    value="User - Standard Access"
+                    disabled
+                    readOnly
+                    tabIndex={-1}
+                    style={{ color: "#6b7280" }}
+                  />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {newUser.role === "admin"
-                    ? "Admins have full access to all features and settings."
-                    : "Users have standard access to features."}
+                  Users have standard access to features.
                 </p>
               </div>
 
@@ -626,7 +622,12 @@ export default function UsersPage() {
                 <button
                   onClick={() => {
                     setAddUserModal(false);
-                    setNewUser({ fullName: "", email: "", role: "user", password: "" });
+                    setNewUser({
+                      fullName: "",
+                      email: "",
+                      role: "user",
+                      password: "",
+                    });
                   }}
                   className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                   disabled={creatingUser}
@@ -635,7 +636,11 @@ export default function UsersPage() {
                 </button>
                 <button
                   onClick={async () => {
-                    if (!newUser.fullName.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+                    if (
+                      !newUser.fullName.trim() ||
+                      !newUser.email.trim() ||
+                      !newUser.password.trim()
+                    ) {
                       alert("Please fill in all required fields");
                       return;
                     }
@@ -643,7 +648,7 @@ export default function UsersPage() {
                     try {
                       // Store current user before creating new user
                       const currentUser = auth.currentUser;
-                      
+
                       // Create user with Firebase Auth
                       const cred = await createUserWithEmailAndPassword(
                         auth,
@@ -654,7 +659,9 @@ export default function UsersPage() {
 
                       // Set display name on auth profile
                       if (newUser.fullName) {
-                        await updateProfile(user, { displayName: newUser.fullName });
+                        await updateProfile(user, {
+                          displayName: newUser.fullName,
+                        });
                       }
 
                       // Create user document in Firestore
@@ -669,7 +676,12 @@ export default function UsersPage() {
                       await signOut(auth);
 
                       // Reset form and close modal
-                      setNewUser({ fullName: "", email: "", role: "user", password: "" });
+                      setNewUser({
+                        fullName: "",
+                        email: "",
+                        role: "user",
+                        password: "",
+                      });
                       setAddUserModal(false);
                     } catch (err) {
                       console.error("Failed to create user:", err);
