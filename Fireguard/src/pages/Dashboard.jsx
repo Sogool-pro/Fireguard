@@ -80,21 +80,21 @@ export default function Dashboard() {
               <span className="mr-3 md:mr-4 block">
                 <span className="font-semibold text-white">Temperature:</span>{" "}
                 Normal {"≤"}
-                40°C, Warning 41-55°C, Alert {">"}55°C
+                35°C, Warning 36-50°C, Alert {">"}50°C
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Smoke (ppm):</span>{" "}
+                <span className="font-semibold text-white">Smoke and Gas (ppm):</span>{" "}
                 Normal {"≤"}
-                300, Warning 301-600, Alert {">"}600
+                1.5, Warning 1.6-3.0, Alert {">"}3.0
               </span>
               <span className="mr-3 md:mr-4 block">
                 <span className="font-semibold text-white">CO (ppm):</span>{" "}
-                Normal {"≤"}35, Warning 36-70, Alert {">"}70
+                Normal {"≤"}1.5, Warning 1.6-3.0, Alert {">"}3.0
               </span>
               <span className="mr-3 md:mr-4 block">
                 <span className="font-semibold text-white">Humidity:</span>{" "}
                 Normal {"≤"}
-                85%, Warning 86-95%, Alert {">"}95%
+                80%, Warning 81-100%, Alert {">"}100%
               </span>
               <span className="block">
                 <span className="font-semibold text-white">Flame:</span> Alert
@@ -123,16 +123,16 @@ export default function Dashboard() {
                 <div className="font-semibold">Humidity</div>
                 <div className="font-semibold">Flame</div>
 
-                <div>41-55°C</div>
-                <div>301-600 ppm</div>
-                <div>36-70 ppm</div>
-                <div>86-95%</div>
+                <div>36-50°C</div>
+                <div>1.6-3.0 ppm</div>
+                <div>1.6-3.0 ppm</div>
+                <div>81-100%</div>
                 <div className="text-gray-500 mt-2">—</div>
 
-                <div>Above 55°C</div>
-                <div>Above 600 ppm</div>
-                <div>Above 70 ppm</div>
-                <div>Above 70%</div>
+                <div>Above 50°C</div>
+                <div>Above 3.0 ppm</div>
+                <div>Above 3.0 ppm</div>
+                <div>Above 100%</div>
                 <div>If detected</div>
               </div>
             </div>

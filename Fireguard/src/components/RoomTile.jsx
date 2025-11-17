@@ -35,6 +35,11 @@ export default function RoomTile(props) {
 
   // Control global buzzer based on any blinking tile
   React.useEffect(() => {
+    if (room.isOffline) {
+      setBuzzerOn(false);
+      return;
+    }
+
     if (blinkingClass) {
       setBuzzerOn(true);
     } else {
@@ -47,7 +52,7 @@ export default function RoomTile(props) {
       if (!anyBlinking) setBuzzerOn(false);
     }
     // eslint-disable-next-line
-  }, [blinkingClass, rooms, setBuzzerOn]);
+  }, [blinkingClass, rooms, setBuzzerOn, room.isOffline]);
 
   const handlePowerClick = () => {
     setRooms((prev) =>
