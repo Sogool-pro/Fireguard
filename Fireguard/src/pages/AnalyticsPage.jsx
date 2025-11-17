@@ -273,11 +273,6 @@ export default function AnalyticsPage() {
     today.setHours(0, 0, 0, 0);
     
     switch (filterType) {
-      case "today":
-        const todayStr = today.toISOString().split("T")[0];
-        setStartDate(todayStr);
-        setEndDate(todayStr);
-        break;
       case "week":
         const weekStart = new Date(today);
         weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
@@ -349,12 +344,6 @@ export default function AnalyticsPage() {
           {/* Quick Filter Buttons */}
           <div className="flex flex-wrap gap-2 flex-1">
             <button
-              onClick={() => setQuickFilter("today")}
-              className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
-            >
-              Today
-            </button>
-            <button
               onClick={() => setQuickFilter("week")}
               className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
             >
@@ -419,267 +408,296 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      {/* Alert Trends & Monthly Sensor Alerts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Alert Trends */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Alarm Trends</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={alertTrendsData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              {/* Removed Normal line */}
-              <Line
-                type="monotone"
-                dataKey="Warning"
-                stroke="#facc15"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="Alert"
-                stroke="#f87171"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        {/* Monthly Sensor Alerts */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Monthly Sensor Alarms</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="CO"
-                stroke="#2563eb"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="Smoke"
-                stroke="#facc15"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="Flame"
-                stroke="#f87171"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Alert Source Bar & Room Distribution Pie */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Alert Source Bar Chart */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Alarm Source Breakdown</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={alertTypeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="value">
-                {alertTypeData.map((entry, idx) => (
-                  <Cell key={entry.name} fill={COLORS[idx]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        {/* Room Distribution Pie Chart */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Room Alarm Distribution</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={roomData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={70}
-                innerRadius={40}
-                label
-              >
-                {roomData.map((entry, idx) => (
-                  <Cell key={entry.name} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Pie>
-              <Legend />
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+      {/* Section 1: Trends & Patterns */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-red-500 pb-2">
+          Trends & Patterns
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Historical analysis of alarm trends and sensor activity over time
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Alert Trends */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Alarm Trends</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={alertTrendsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                {/* Removed Normal line */}
+                <Line
+                  type="monotone"
+                  dataKey="Warning"
+                  stroke="#facc15"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Alert"
+                  stroke="#f87171"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Monthly Sensor Alerts */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Monthly Sensor Alarms</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="CO"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Smoke"
+                  stroke="#facc15"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Flame"
+                  stroke="#f87171"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* Additional Analytics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Alert Severity Breakdown */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Alarm Severity Breakdown</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={severityData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={70}
-                innerRadius={40}
-                label
-              >
-                {severityData.map((entry) => (
-                  <Cell
-                    key={entry.name}
-                    fill={
-                      entry.name === "Warning"
-                        ? "#facc15"
-                        : entry.name === "Alert"
-                        ? "#f87171"
-                        : COLORS[0]
-                    }
-                  />
-                ))}
-              </Pie>
-              <Legend />
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+      {/* Section 2: Alarm Distribution */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-red-500 pb-2">
+          Alarm Distribution
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Breakdown of alarms by source, location, and severity level
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Alert Source Bar Chart */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Alarm Source Breakdown</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={alertTypeData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="value">
+                  {alertTypeData.map((entry, idx) => (
+                    <Cell key={entry.name} fill={COLORS[idx]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Room Distribution Pie Chart */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Room Alarm Distribution</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={roomData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={70}
+                  innerRadius={40}
+                  label
+                >
+                  {roomData.map((entry, idx) => (
+                    <Cell key={entry.name} fill={COLORS[idx % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        {/* Average Response Time chart removed per request */}
-      </div>
-
-      {/* Room Comparison & Real-Time Sensor Readings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Room Comparison */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">
-            Room Comparison (Total Alarms)
-          </h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={roomComparisonData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="room" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="CO" fill="#2563eb" />
-              <Bar dataKey="Smoke" fill="#facc15" />
-              <Bar dataKey="Flame" fill="#f87171" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        {/* Real-Time Sensor Readings */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Recent Sensor Readings</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={realTimeSensorData}>
-              <defs>
-                <linearGradient id="colorCO" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorSmoke" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#facc15" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#facc15" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f87171" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorHumidity" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#34d399" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="time" />
-              <YAxis />
-              <CartesianGrid strokeDasharray="3 3" />
-              <Tooltip />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="CO"
-                stroke="#2563eb"
-                fillOpacity={1}
-                fill="url(#colorCO)"
-              />
-              <Area
-                type="monotone"
-                dataKey="Smoke"
-                stroke="#facc15"
-                fillOpacity={1}
-                fill="url(#colorSmoke)"
-              />
-              <Area
-                type="monotone"
-                dataKey="Temp"
-                stroke="#f87171"
-                fillOpacity={1}
-                fill="url(#colorTemp)"
-              />
-              <Area
-                type="monotone"
-                dataKey="Humidity"
-                stroke="#34d399"
-                fillOpacity={1}
-                fill="url(#colorHumidity)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Alert Severity Breakdown */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Alarm Severity Breakdown</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={severityData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={70}
+                  innerRadius={40}
+                  label
+                >
+                  {severityData.map((entry) => (
+                    <Cell
+                      key={entry.name}
+                      fill={
+                        entry.name === "Warning"
+                          ? "#facc15"
+                          : entry.name === "Alert"
+                          ? "#f87171"
+                          : COLORS[0]
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Sensor Breakdown */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Sensor Breakdown</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={sensorBreakdownData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="value" fill="#2563eb" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* Room-based Severity & Sensor Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Room-based Severity */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Room-based Severity</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={roomSeverityData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="room" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              {/* Removed Normal bar */}
-              <Bar dataKey="Warning" stackId="a" fill="#facc15" />
-              <Bar dataKey="Alert" stackId="a" fill="#f87171" />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Section 3: Room Analysis */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-red-500 pb-2">
+          Room Analysis
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Comparative analysis of alarm patterns across different rooms
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Room Comparison */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">
+              Room Comparison (Total Alarms)
+            </h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={roomComparisonData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="room" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="CO" fill="#2563eb" />
+                <Bar dataKey="Smoke" fill="#facc15" />
+                <Bar dataKey="Flame" fill="#f87171" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Room-based Severity */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Room-based Severity</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={roomSeverityData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="room" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                {/* Removed Normal bar */}
+                <Bar dataKey="Warning" stackId="a" fill="#facc15" />
+                <Bar dataKey="Alert" stackId="a" fill="#f87171" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        {/* Sensor Breakdown */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-lg font-bold mb-2">Sensor Breakdown</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={sensorBreakdownData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#2563eb" />
-            </BarChart>
-          </ResponsiveContainer>
+      </div>
+
+      {/* Section 4: Sensor Data */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-red-500 pb-2">
+          Sensor Data
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Real-time sensor readings and measurements
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Real-Time Sensor Readings */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h2 className="text-lg font-bold mb-2">Recent Sensor Readings</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={realTimeSensorData}>
+                <defs>
+                  <linearGradient id="colorCO" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorSmoke" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#facc15" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#facc15" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f87171" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorHumidity" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#34d399" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" />
+                <YAxis />
+                <CartesianGrid strokeDasharray="3 3" />
+                <Tooltip />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="CO"
+                  stroke="#2563eb"
+                  fillOpacity={1}
+                  fill="url(#colorCO)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="Smoke"
+                  stroke="#facc15"
+                  fillOpacity={1}
+                  fill="url(#colorSmoke)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="Temp"
+                  stroke="#f87171"
+                  fillOpacity={1}
+                  fill="url(#colorTemp)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="Humidity"
+                  stroke="#34d399"
+                  fillOpacity={1}
+                  fill="url(#colorHumidity)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
