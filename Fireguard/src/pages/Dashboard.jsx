@@ -73,46 +73,50 @@ export default function Dashboard() {
             {/* Mobile: stacked details (toggle) - unchanged behavior */}
             <div
               id="mobile-legend-details"
-              className={`${legendExpanded ? "block" : "hidden"} md:hidden text-gray-300`}
+              className={`${
+                legendExpanded ? "block" : "hidden"
+              } md:hidden text-gray-300`}
             >
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Temperature:</span> Normal {"≤"}
+                <span className="font-semibold text-white">Temperature:</span>{" "}
+                Normal {"≤"}
                 40°C, Warning 41-55°C, Alert {">"}55°C
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Smoke (ppm):</span> Normal {"≤"}
+                <span className="font-semibold text-white">Smoke (ppm):</span>{" "}
+                Normal {"≤"}
                 300, Warning 301-600, Alert {">"}600
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">CO (ppm):</span> Normal {"≤"}35,
-                Warning 36-70, Alert {">"}70
+                <span className="font-semibold text-white">CO (ppm):</span>{" "}
+                Normal {"≤"}35, Warning 36-70, Alert {">"}70
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Humidity:</span> Normal {"≤"}
+                <span className="font-semibold text-white">Humidity:</span>{" "}
+                Normal {"≤"}
                 85%, Warning 86-95%, Alert {">"}95%
               </span>
               <span className="block">
-                <span className="font-semibold text-white">Flame:</span> Alert if detected
+                <span className="font-semibold text-white">Flame:</span> Alert
+                if detected
               </span>
             </div>
 
             {/* Desktop: legend layout matching the provided screenshot (centered) */}
             <div className="hidden md:flex md:items-center md:justify-center md:gap-6 w-full">
-              <div className="flex flex-col items-start ml-6 mr-4">
-                <span className="font-semibold text-white mb-2">
-                  Legend:
-                </span>
-                <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-col items-start ml-8 mr-4">
+                <span className="font-semibold text-white mb-2">Legend:</span>
+                <div className="flex items-center gap-2 mb-2 ml-16">
                   <span className="inline-block w-4 h-4 rounded-[4px] bg-yellow-400 animate-pulse"></span>
                   <span className="text-gray-300">Warning</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 ml-16">
                   <span className="inline-block w-4 h-4 rounded-[4px] bg-red-500 animate-pulse"></span>
                   <span className="text-gray-300">Alert</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-x-6 text-sm mx-auto mt-2 text-gray-300">
+              <div className="grid grid-cols-5 gap-x-16 text-sm mx-auto mt-2 text-gray-300">
                 <div className="font-semibold">Temperature</div>
                 <div className="font-semibold">Smoke and Gas</div>
                 <div className="font-semibold">Carbon monoxide</div>
