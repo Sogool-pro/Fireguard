@@ -129,7 +129,7 @@ export default function RoomTile(props) {
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
             {room.isOffline ? 0 : room.carbonMonoxide}
-            <span className="text-xs font-normal text-gray-500">ppm</span>
+            <span className="text-xs font-normal text-gray-500">ratio</span>
             <MdCo2 className="text-2xl text-gray-500" />
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function RoomTile(props) {
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
             {room.isOffline ? 0 : room.smoke}
-            <span className="text-xs font-normal text-gray-500">ppm</span>
+            <span className="text-xs font-normal text-gray-500">ratio</span>
             <GiSmokeBomb className="text-2xl text-gray-500" />
           </div>
         </div>
