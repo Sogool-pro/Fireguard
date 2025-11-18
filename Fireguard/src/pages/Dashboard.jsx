@@ -83,12 +83,12 @@ export default function Dashboard() {
                 35°C, Warning 36-50°C, Alert {">"}50°C
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Smoke and Gas (ppm):</span>{" "}
+                <span className="font-semibold text-white">Smoke and Gas (ratio):</span>{" "}
                 Normal {"≤"}
                 1.5, Warning 1.6-3.0, Alert {">"}3.0
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">CO (ppm):</span>{" "}
+                <span className="font-semibold text-white">CO (ratio):</span>{" "}
                 Normal {"≤"}1.5, Warning 1.6-3.0, Alert {">"}3.0
               </span>
               <span className="mr-3 md:mr-4 block">
@@ -124,14 +124,14 @@ export default function Dashboard() {
                 <div className="font-semibold">Flame</div>
 
                 <div>36-50°C</div>
-                <div>1.6-3.0 ppm</div>
-                <div>1.6-3.0 ppm</div>
+                <div>1.6-3.0 ratio</div>
+                <div>1.6-3.0 ratio</div>
                 <div>81-100%</div>
                 <div className="text-gray-500 mt-2">—</div>
 
                 <div>Above 50°C</div>
-                <div>Above 3.0 ppm</div>
-                <div>Above 3.0 ppm</div>
+                <div>Above 3.0 ratio</div>
+                <div>Above 3.0 ratio</div>
                 <div>Above 100%</div>
                 <div>If detected</div>
               </div>
