@@ -25,7 +25,7 @@ export default function Header() {
           room.smoke > 600 ||
           room.carbonMonoxide > 70 ||
           (room.alert_level && room.alert_level.toLowerCase() === "alert")) &&
-        room.silenced !== true
+        room.silenced !== true,
     );
 
   // Play or stop buzzer.mp3 based on shouldBuzzerPlay
@@ -108,7 +108,7 @@ export default function Header() {
   const pageTitles = {
     "/": "Dashboard",
     "/logs": "Logs",
-    "/analytics": "Analytics",
+    "/analytics": "Reports",
     "/users": "Users",
     "/settings": "Settings",
   };
@@ -207,7 +207,7 @@ export default function Header() {
                                 {alert.node
                                   ? `Room ${String(alert.node).replace(
                                       "NODE",
-                                      ""
+                                      "",
                                     )}`
                                   : "Unknown Room"}
                               </div>
@@ -291,7 +291,7 @@ export default function Header() {
                                 {alert.node
                                   ? `Room ${String(alert.node).replace(
                                       "NODE",
-                                      ""
+                                      "",
                                     )}`
                                   : "Unknown Room"}
                               </div>
@@ -327,8 +327,8 @@ export default function Header() {
               {authLoading
                 ? "..."
                 : role
-                ? role.charAt(0).toUpperCase() + role.slice(1)
-                : "User"}
+                  ? role.charAt(0).toUpperCase() + role.slice(1)
+                  : "User"}
             </span>
           </button>
         </div>

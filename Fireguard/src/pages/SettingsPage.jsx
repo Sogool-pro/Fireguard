@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useRoom } from "../context/RoomContext";
+import { auth, firestore } from "../firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import {
   FaHome,
   FaEdit,
@@ -7,12 +10,19 @@ import {
   FaTrash,
   FaPhone,
   FaPlus,
+  FaLock,
+  FaUser,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import { ref, set, remove, onValue } from "firebase/database";
+import ChangePasswordModal from "../components/ChangePasswordModal";
 
 export default function SettingsPage() {
   const { rooms, setRooms } = useRoom();
+  const [userRole, setUserRole] = useState(null);
+  const [displayName, setDisplayName] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [loadingName, setLoadingName] = useState(false);
 
   // local edited names map
   const [edited, setEdited] = useState({});
@@ -28,6 +38,7 @@ export default function SettingsPage() {
     deleteOption: true,
   });
   const [processing, setProcessing] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   // Phone numbers state
   const [phoneNumbers, setPhoneNumbers] = useState([]);
@@ -38,6 +49,52 @@ export default function SettingsPage() {
     label: "",
     number: "",
   });
+
+  // Get user role from Firestore
+  useEffect(() => {
+    const getUser = async () => {
+      if (auth.currentUser) {
+        const userDoc = await getDoc(
+          doc(firestore, "users", auth.currentUser.uid),
+        );
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role);
+          setDisplayName(
+            userDoc.data().displayName || auth.currentUser.displayName || "",
+          );
+        }
+      }
+    };
+    getUser();
+  }, []);
+
+  // Handle update display name
+  const handleUpdateName = async () => {
+    if (!displayName.trim()) {
+      alert("Name cannot be empty");
+      return;
+    }
+    setLoadingName(true);
+    try {
+      // Update Firebase Auth
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName });
+      }
+      // Update Firestore
+      if (auth.currentUser) {
+        await updateDoc(doc(firestore, "users", auth.currentUser.uid), {
+          displayName: displayName,
+        });
+      }
+      setEditingName(false);
+      alert("Name updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update name: " + err.message);
+    } finally {
+      setLoadingName(false);
+    }
+  };
 
   useEffect(() => {
     const map = {};
@@ -58,7 +115,7 @@ export default function SettingsPage() {
     setEditingMap((prev) => {
       const updated = { ...prev };
       const currentRoomIds = new Set(
-        rooms.map((r) => r.nodeId).filter(Boolean)
+        rooms.map((r) => r.nodeId).filter(Boolean),
       );
       // Remove editing state for rooms that no longer exist
       Object.keys(updated).forEach((nodeId) => {
@@ -96,7 +153,7 @@ export default function SettingsPage() {
       (err) => {
         console.error("Failed to load phone numbers:", err);
         setPhoneNumbers([]);
-      }
+      },
     );
     return () => unsubscribe();
   }, []);
@@ -107,8 +164,8 @@ export default function SettingsPage() {
       await set(ref(db, `room_names/${nodeId}`), name);
       setRooms((prev) =>
         prev.map((r) =>
-          r.nodeId === nodeId ? { ...r, roomName: name, customName: name } : r
-        )
+          r.nodeId === nodeId ? { ...r, roomName: name, customName: name } : r,
+        ),
       );
     } catch (err) {
       console.error("Failed to save room name:", err);
@@ -153,8 +210,8 @@ export default function SettingsPage() {
           // Update local state to reflect archived flag so UI hides it immediately
           setRooms((prev) =>
             prev.map((r) =>
-              r.nodeId === nodeId ? { ...r, archived: true } : r
-            )
+              r.nodeId === nodeId ? { ...r, archived: true } : r,
+            ),
           );
         }
       } catch (err) {
@@ -170,7 +227,7 @@ export default function SettingsPage() {
     try {
       await set(ref(db, `room_meta/${nodeId}/archived`), next);
       setRooms((prev) =>
-        prev.map((r) => (r.nodeId === nodeId ? { ...r, archived: next } : r))
+        prev.map((r) => (r.nodeId === nodeId ? { ...r, archived: next } : r)),
       );
     } catch (err) {
       console.error("Failed to toggle archive:", err);
@@ -184,7 +241,7 @@ export default function SettingsPage() {
     try {
       await set(ref(db, `room_meta/${nodeId}/onRepair`), next);
       setRooms((prev) =>
-        prev.map((r) => (r.nodeId === nodeId ? { ...r, onRepair: next } : r))
+        prev.map((r) => (r.nodeId === nodeId ? { ...r, onRepair: next } : r)),
       );
     } catch (err) {
       console.error("Failed to toggle repair status:", err);
@@ -308,360 +365,457 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <h3 className="text-lg font-medium">Room Management</h3>
-        <p className="text-sm text-gray-500">
-          Configure and manage your monitored rooms
-        </p>
+      {/* Account Information Section - For all users */}
+      <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+          <FaUser className="text-blue-600" />
+          Account Information
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name
+            </label>
+            {editingName ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleUpdateName}
+                  disabled={loadingName}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {loadingName ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => setEditingName(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="text-gray-800">
+                  {displayName || "Not set"}
+                </span>
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
+              {auth.currentUser?.email}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {rooms.length === 0 && (
-          <p className="text-sm text-gray-500">No rooms found.</p>
-        )}
-        {rooms.map((r, idx) => (
-          <div
-            key={r.nodeId || idx}
-            className="bg-white rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center gap-4"
-          >
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="w-14 h-14 bg-slate-900/10 rounded-lg flex items-center justify-center">
-                <FaHome className="text-2xl md:text-3xl text-gray-800" />
-              </div>
-              <div className="w-full">
-                {/* Title area: show input in edit mode, otherwise plain title */}
-                {editingMap[r.nodeId] ? (
-                  <input
-                    type="text"
-                    className="w-full text-lg md:text-xl font-semibold text-slate-900 uppercase border rounded px-3 py-2"
-                    value={edited[r.nodeId] ?? r.roomName}
-                    onChange={(e) =>
-                      setEdited((s) => ({ ...s, [r.nodeId]: e.target.value }))
-                    }
-                  />
-                ) : (
-                  <div className="text-base md:text-lg font-semibold text-slate-900 uppercase">
-                    {r.roomName}
+      {/* Account Security Section - For all users */}
+      <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+          <FaLock className="text-red-600" />
+          Account Security
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Manage your account password
+        </p>
+        <button
+          onClick={() => setShowChangePasswordModal(true)}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Change Password
+        </button>
+      </div>
+
+      {/* Admin Only Section - Room Management */}
+      {userRole === "admin" && (
+        <>
+          <div className="mb-4">
+            <h3 className="text-lg font-medium">Room Management</h3>
+            <p className="text-sm text-gray-500">
+              Configure and manage your monitored rooms
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {rooms.length === 0 && (
+              <p className="text-sm text-gray-500">No rooms found.</p>
+            )}
+            {rooms.map((r, idx) => (
+              <div
+                key={r.nodeId || idx}
+                className="bg-white rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center gap-4"
+              >
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                  <div className="w-14 h-14 bg-slate-900/10 rounded-lg flex items-center justify-center">
+                    <FaHome className="text-2xl md:text-3xl text-gray-800" />
                   </div>
-                )}
-                <div className="flex items-center gap-3 mt-2">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      r.status === "Active" && !r.archived
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {r.status === "Active" && !r.archived
-                      ? "Active"
-                      : r.archived
-                      ? "Archived"
-                      : r.status}
-                  </span>
-                  <div className="text-xs text-gray-500">
-                    Node ID:{" "}
-                    <span className="font-medium text-gray-700">
-                      {r.nodeId || "unknown"}
-                    </span>
+                  <div className="w-full">
+                    {/* Title area: show input in edit mode, otherwise plain title */}
+                    {editingMap[r.nodeId] ? (
+                      <input
+                        type="text"
+                        className="w-full text-lg md:text-xl font-semibold text-slate-900 uppercase border rounded px-3 py-2"
+                        value={edited[r.nodeId] ?? r.roomName}
+                        onChange={(e) =>
+                          setEdited((s) => ({
+                            ...s,
+                            [r.nodeId]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <div className="text-base md:text-lg font-semibold text-slate-900 uppercase">
+                        {r.roomName}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 mt-2">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          r.status === "Active" && !r.archived
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-200 text-gray-700"
+                        }`}
+                      >
+                        {r.status === "Active" && !r.archived
+                          ? "Active"
+                          : r.archived
+                            ? "Archived"
+                            : r.status}
+                      </span>
+                      <div className="text-xs text-gray-500">
+                        Node ID:{" "}
+                        <span className="font-medium text-gray-700">
+                          {r.nodeId || "unknown"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1"></div>
+
+                <div className="w-full md:w-auto flex items-center justify-end md:justify-start">
+                  <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    {editingMap[r.nodeId] ? (
+                      <>
+                        <button
+                          className="flex items-center gap-2 px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm cursor-pointer flex-shrink-0"
+                          onClick={async () => {
+                            await saveName(r.nodeId);
+                            setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
+                          }}
+                        >
+                          <FaEdit className="w-4 h-4 text-white" />
+                          Save
+                        </button>
+                        <button
+                          className="px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-pointer flex-shrink-0"
+                          onClick={() => {
+                            setEdited((s) => ({
+                              ...s,
+                              [r.nodeId]: r.roomName,
+                            }));
+                            setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-50 transition-colors cursor-pointer flex-shrink-0"
+                          onClick={() =>
+                            setEditingMap((s) => ({ ...s, [r.nodeId]: true }))
+                          }
+                        >
+                          <FaEdit className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          className="px-3 md:px-4 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
+                          onClick={() =>
+                            showConfirm({
+                              title: r.archived
+                                ? "Unarchive room"
+                                : "Archive room",
+                              message: r.archived
+                                ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
+                                : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
+                              onConfirm: () => toggleArchive(r.nodeId),
+                            })
+                          }
+                        >
+                          <FaArchive className="w-4 h-4 text-white" />
+                          {r.archived ? "Unarchive" : "Archive"}
+                        </button>
+                        <button
+                          className="px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-colors cursor-pointer flex-shrink-0"
+                          onClick={() =>
+                            showConfirm({
+                              title: "Remove room",
+                              message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
+                              onConfirm: removeRoom(r.nodeId),
+                              showDeleteOption: true,
+                            })
+                          }
+                        >
+                          <FaTrash className="w-4 h-4 text-white" />
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* Phone Numbers Section */}
+          <div className="mt-12 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-medium">Phone Numbers</h3>
+                <p className="text-sm text-gray-500">
+                  Manage emergency and notification contacts
+                </p>
+              </div>
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
+                onClick={openAddPhoneModal}
+              >
+                <FaPlus className="w-4 h-4" />
+                Add Phone Number
+              </button>
             </div>
 
-            <div className="flex-1"></div>
+            <div className="space-y-4">
+              {phoneNumbers.length === 0 && (
+                <p className="text-sm text-gray-500">No phone numbers found.</p>
+              )}
+              {phoneNumbers.map((phone) => (
+                <div
+                  key={phone.id}
+                  className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-4"
+                >
+                  <div className="flex items-center gap-4 w-full md:w-auto flex-1">
+                    <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FaPhone className="text-2xl text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-base font-semibold text-gray-900">
+                        {phone.label}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {phone.number}
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="w-full md:w-auto flex items-center justify-end md:justify-start">
-              <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                {editingMap[r.nodeId] ? (
-                  <>
+                  <div className="w-full md:w-auto flex items-center gap-3">
                     <button
-                      className="flex items-center gap-2 px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm cursor-pointer flex-shrink-0"
-                      onClick={async () => {
-                        await saveName(r.nodeId);
-                        setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
-                      }}
-                    >
-                      <FaEdit className="w-4 h-4 text-white" />
-                      Save
-                    </button>
-                    <button
-                      className="px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-pointer flex-shrink-0"
-                      onClick={() => {
-                        setEdited((s) => ({ ...s, [r.nodeId]: r.roomName }));
-                        setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-50 transition-colors cursor-pointer flex-shrink-0"
-                      onClick={() =>
-                        setEditingMap((s) => ({ ...s, [r.nodeId]: true }))
-                      }
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => openEditPhoneModal(phone)}
                     >
                       <FaEdit className="w-4 h-4" />
                       Edit
                     </button>
                     <button
-                      className="px-3 md:px-4 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
-                      onClick={() =>
-                        showConfirm({
-                          title: r.archived ? "Unarchive room" : "Archive room",
-                          message: r.archived
-                            ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
-                            : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
-                          onConfirm: () => toggleArchive(r.nodeId),
-                        })
-                      }
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
+                      onClick={() => deletePhoneNumber(phone.id)}
                     >
-                      <FaArchive className="w-4 h-4 text-white" />
-                      {r.archived ? "Unarchive" : "Archive"}
-                    </button>
-                    <button
-                      className="px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-colors cursor-pointer flex-shrink-0"
-                      onClick={() =>
-                        showConfirm({
-                          title: "Remove room",
-                          message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
-                          onConfirm: removeRoom(r.nodeId),
-                          showDeleteOption: true,
-                        })
-                      }
-                    >
-                      <FaTrash className="w-4 h-4 text-white" />
+                      <FaTrash className="w-4 h-4" />
                       Delete
                     </button>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Phone Numbers Section */}
-      <div className="mt-12 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium">Phone Numbers</h3>
-            <p className="text-sm text-gray-500">
-              Manage emergency and notification contacts
-            </p>
-          </div>
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
-            onClick={openAddPhoneModal}
-          >
-            <FaPlus className="w-4 h-4" />
-            Add Phone Number
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {phoneNumbers.length === 0 && (
-            <p className="text-sm text-gray-500">No phone numbers found.</p>
-          )}
-          {phoneNumbers.map((phone) => (
+          {/* Phone Number Modal */}
+          {phoneModal.open && (
             <div
-              key={phone.id}
-              className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-4"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="phone-modal-title"
             >
-              <div className="flex items-center gap-4 w-full md:w-auto flex-1">
-                <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FaPhone className="text-2xl text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-base font-semibold text-gray-900">
-                    {phone.label}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    {phone.number}
-                  </div>
-                </div>
-              </div>
-
-              <div className="w-full md:w-auto flex items-center gap-3">
-                <button
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => openEditPhoneModal(phone)}
-                >
-                  <FaEdit className="w-4 h-4" />
-                  Edit
-                </button>
-                <button
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
-                  onClick={() => deletePhoneNumber(phone.id)}
-                >
-                  <FaTrash className="w-4 h-4" />
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Phone Number Modal */}
-      {phoneModal.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="phone-modal-title"
-        >
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
-            <h3
-              id="phone-modal-title"
-              className="text-lg font-semibold text-gray-900 mb-4"
-            >
-              {phoneModal.mode === "add"
-                ? "Add Phone Number"
-                : "Edit Phone Number"}
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Label
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="e.g., Emergency Contact"
-                  value={phoneModal.label}
-                  onChange={(e) =>
-                    setPhoneModal((prev) => ({
-                      ...prev,
-                      label: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="e.g., +639456789012"
-                  value={phoneModal.number}
-                  onChange={(e) =>
-                    setPhoneModal((prev) => ({
-                      ...prev,
-                      number: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={closePhoneModal}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer"
-                onClick={savePhoneNumber}
-              >
-                {phoneModal.mode === "add" ? "Add" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-      {confirm.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-title"
-        >
-          <div className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-6">
-            {/* Icon + Title */}
-            <div className="flex items-start gap-4 mb-4">
-              <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  confirm.showDeleteOption ? "bg-red-100" : "bg-slate-700"
-                }`}
-              >
-                {confirm.showDeleteOption ? (
-                  <FaTrash className="w-5 h-5 text-red-600" />
-                ) : (
-                  <FaArchive className="w-5 h-5 text-white" />
-                )}
-              </div>
-              <div>
+              <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
                 <h3
-                  id="confirm-title"
-                  className="text-lg font-semibold text-gray-900"
+                  id="phone-modal-title"
+                  className="text-lg font-semibold text-gray-900 mb-4"
                 >
-                  {confirm.title}
+                  {phoneModal.mode === "add"
+                    ? "Add Phone Number"
+                    : "Edit Phone Number"}
                 </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Label
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      placeholder="e.g., Emergency Contact"
+                      value={phoneModal.label}
+                      onChange={(e) =>
+                        setPhoneModal((prev) => ({
+                          ...prev,
+                          label: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      placeholder="e.g., +639456789012"
+                      value={phoneModal.number}
+                      onChange={(e) =>
+                        setPhoneModal((prev) => ({
+                          ...prev,
+                          number: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={closePhoneModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer"
+                    onClick={savePhoneNumber}
+                  >
+                    {phoneModal.mode === "add" ? "Add" : "Save"}
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Message */}
-            <p className="text-sm text-gray-700 mb-6">{confirm.message}</p>
+          {/* Confirmation Modal */}
+          {confirm.open && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-title"
+            >
+              <div className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-6">
+                {/* Icon + Title */}
+                <div className="flex items-start gap-4 mb-4">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      confirm.showDeleteOption ? "bg-red-100" : "bg-slate-700"
+                    }`}
+                  >
+                    {confirm.showDeleteOption ? (
+                      <FaTrash className="w-5 h-5 text-red-600" />
+                    ) : (
+                      <FaArchive className="w-5 h-5 text-white" />
+                    )}
+                  </div>
+                  <div>
+                    <h3
+                      id="confirm-title"
+                      className="text-lg font-semibold text-gray-900"
+                    >
+                      {confirm.title}
+                    </h3>
+                  </div>
+                </div>
 
-            {/* Delete Option Checkbox */}
-            {confirm.showDeleteOption && (
-              <div className="mb-6">
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={confirm.deleteOption}
-                    onChange={() =>
-                      setConfirm((prev) => ({
-                        ...prev,
-                        deleteOption: !prev.deleteOption,
-                      }))
+                {/* Message */}
+                <p className="text-sm text-gray-700 mb-6">{confirm.message}</p>
+
+                {/* Delete Option Checkbox */}
+                {confirm.showDeleteOption && (
+                  <div className="mb-6">
+                    <label className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={confirm.deleteOption}
+                        onChange={() =>
+                          setConfirm((prev) => ({
+                            ...prev,
+                            deleteOption: !prev.deleteOption,
+                          }))
+                        }
+                        className="w-5 h-5 accent-red-600 cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-gray-900">
+                        Also delete sensor data and related alerts
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3">
+                  <button
+                    className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    onClick={() =>
+                      setConfirm({
+                        open: false,
+                        title: "",
+                        message: "",
+                        onConfirm: null,
+                      })
                     }
-                    className="w-5 h-5 accent-red-600 cursor-pointer"
-                  />
-                  <span className="text-sm font-medium text-gray-900">
-                    Also delete sensor data and related alerts
-                  </span>
-                </label>
+                    disabled={processing}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                    onClick={handleConfirm}
+                    disabled={processing}
+                  >
+                    {processing ? "Please wait..." : "Confirm"}
+                  </button>
+                </div>
               </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3">
-              <button
-                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                onClick={() =>
-                  setConfirm({
-                    open: false,
-                    title: "",
-                    message: "",
-                    onConfirm: null,
-                  })
-                }
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
-                onClick={handleConfirm}
-                disabled={processing}
-              >
-                {processing ? "Please wait..." : "Confirm"}
-              </button>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        onSuccess={() => {
+          // Optional: Show success message or perform any post-password-change actions
+        }}
+      />
     </div>
   );
 }

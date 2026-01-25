@@ -19,6 +19,26 @@ import {
   signOut,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import emailjs from "@emailjs/browser";
+
+// Initialize EmailJS
+const EMAILJS_PUBLIC_KEY = "of9oEgeazNJq_sjCb";
+const EMAILJS_SERVICE_ID = "service_dnalnvl";
+const EMAILJS_TEMPLATE_ID = "template_iddo68t";
+
+emailjs.init(EMAILJS_PUBLIC_KEY);
+
+// Generate temporary password
+function generateTemporaryPassword() {
+  const length = 12;
+  const charset =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
+}
 
 function formatDate(ts) {
   if (!ts) return "-";
@@ -60,7 +80,6 @@ export default function UsersPage() {
     fullName: "",
     email: "",
     role: "user",
-    password: "",
   });
   const [creatingUser, setCreatingUser] = useState(false);
 
@@ -583,38 +602,10 @@ export default function UsersPage() {
                 </p>
               </div>
 
-              {/* Password Field */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="password"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Enter password"
-                    value={newUser.password}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, password: e.target.value })
-                    }
-                    required
-                  />
-                </div>
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>Temporary Password:</strong> A randomly generated password will be created and sent to the user's email address.
+                </p>
               </div>
 
               {/* Action Buttons */}
@@ -626,7 +617,6 @@ export default function UsersPage() {
                       fullName: "",
                       email: "",
                       role: "user",
-                      password: "",
                     });
                   }}
                   className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
@@ -638,8 +628,7 @@ export default function UsersPage() {
                   onClick={async () => {
                     if (
                       !newUser.fullName.trim() ||
-                      !newUser.email.trim() ||
-                      !newUser.password.trim()
+                      !newUser.email.trim()
                     ) {
                       alert("Please fill in all required fields");
                       return;
@@ -649,11 +638,14 @@ export default function UsersPage() {
                       // Store current user before creating new user
                       const currentUser = auth.currentUser;
 
+                      // Generate temporary password
+                      const tempPassword = generateTemporaryPassword();
+
                       // Create user with Firebase Auth
                       const cred = await createUserWithEmailAndPassword(
                         auth,
                         newUser.email,
-                        newUser.password
+                        tempPassword
                       );
                       const user = cred.user;
 
@@ -670,7 +662,22 @@ export default function UsersPage() {
                         displayName: newUser.fullName || null,
                         role: newUser.role || "user",
                         createdAt: serverTimestamp(),
+                        needsPasswordChange: true,
+                        temporaryPasswordSet: true,
                       });
+
+                      // Send temporary password via EmailJS
+                      try {
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                          user_email: newUser.email,
+                          user_name: newUser.fullName,
+                          temp_password: tempPassword,
+                        });
+                        console.log("Email sent successfully!");
+                      } catch (emailError) {
+                        console.error("Failed to send email:", emailError);
+                        // Don't fail, user is created
+                      }
 
                       // Sign out the newly created user to prevent auto-login
                       await signOut(auth);
@@ -680,9 +687,9 @@ export default function UsersPage() {
                         fullName: "",
                         email: "",
                         role: "user",
-                        password: "",
                       });
                       setAddUserModal(false);
+                      alert("User created successfully! Temporary password sent to email.");
                     } catch (err) {
                       console.error("Failed to create user:", err);
                       alert("Failed to create user: " + err.message);

@@ -25,13 +25,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex w-[1000px] max-w-full h-[640px] rounded-3xl shadow-2xl overflow-hidden">
         {/* Left promotional panel */}
-        <div 
+        <div
           className="w-1/2 text-white p-12 relative hidden md:flex flex-col justify-between"
           style={{
             backgroundImage: `linear-gradient(to bottom right, rgba(220, 38, 38, 0.8), rgba(185, 28, 28, 0.7)), url(${bgAlpha})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         >
           <div>
@@ -149,7 +149,9 @@ export default function LoginPage() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
 
-              <label className="block text-sm text-gray-700 font-medium">Password</label>
+              <label className="block text-sm text-gray-700 font-medium">
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
@@ -158,13 +160,34 @@ export default function LoginPage() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
 
-              <div className="pt-2">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate("/forgot-password")}
+                  className="text-sm text-red-600 hover:text-red-700 font-semibold"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="pt-1">
                 <button
                   type="submit"
                   className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
                 >
                   Login
                 </button>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Don't have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/register")}
+                    className="text-red-600 hover:text-red-700 font-semibold"
+                  >
+                    Register here
+                  </button>
+                </p>
               </div>
             </form>
           </div>

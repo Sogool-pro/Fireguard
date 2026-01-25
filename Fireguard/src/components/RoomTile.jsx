@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FaHome, FaThermometerHalf, FaCloud, FaPowerOff } from "react-icons/fa";
 import { MdCo2 } from "react-icons/md";
 import { GiSmokeBomb } from "react-icons/gi";
@@ -30,6 +30,7 @@ export default function RoomTile(props) {
   const { rooms, setRooms, setBuzzerOn } = useRoom();
   const room = props;
   const { showRoomChart } = useRoomChartModal();
+  const [timeUntilOffline, setTimeUntilOffline] = useState(60);
 
   const blinkingClass = getBlinkingClass(room);
 
@@ -53,6 +54,18 @@ export default function RoomTile(props) {
     }
     // eslint-disable-next-line
   }, [blinkingClass, rooms, setBuzzerOn, room.isOffline]);
+
+  // Calculate time until offline
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const OFFLINE_THRESHOLD = 60000; // 60 seconds
+      const timeSinceUpdate = now - (room.lastUpdated || now);
+      const remainingTime = Math.max(0, Math.ceil((OFFLINE_THRESHOLD - timeSinceUpdate) / 1000));
+      setTimeUntilOffline(remainingTime);
+    }, 1000); // Update every second
+    return () => clearInterval(timer);
+  }, [room.lastUpdated]);
 
   const handlePowerClick = () => {
     setRooms((prev) =>
@@ -162,6 +175,22 @@ export default function RoomTile(props) {
           {room.status}
         </span>
       </div>
+      {!room.isOffline && (
+        <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+          <span>Last Update: {room.sensorTimestampString || "N/A"}</span>
+          <span 
+            className={`px-2 py-1 rounded ${
+              timeUntilOffline <= 10 
+                ? "bg-red-100 text-red-700 font-semibold" 
+                : timeUntilOffline <= 30 
+                ? "bg-yellow-100 text-yellow-700" 
+                : "bg-gray-100 text-gray-700"
+            }`}
+          >
+            Offline in: {timeUntilOffline}s
+          </span>
+        </div>
+      )}
     </div>
   );
 }

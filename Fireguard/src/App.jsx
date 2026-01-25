@@ -6,8 +6,10 @@ import LogsPage from "./pages/LogsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import UsersPage from "./pages/UsersPage";
 import SettingsPage from "./pages/SettingsPage";
+import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import { RoomProvider } from "./context/RoomContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { AlarmModalProvider } from "./context/AlarmModalContext";
@@ -27,9 +29,13 @@ function App() {
             <NotificationProvider>
               <RoomChartModalProvider>
                 <Routes>
-                  {/* Auth routes: login and register (standalone pages) */}
+                  {/* Auth routes: login, register, and forgot password (standalone pages) */}
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route
+                    path="/forgot-password"
+                    element={<ForgotPasswordPage />}
+                  />
                   {/* All other routes: show sidebar and main layout */}
                   <Route
                     path="/*"
@@ -57,6 +63,10 @@ function App() {
                                   <Route
                                     path="/settings"
                                     element={<SettingsPage />}
+                                  />
+                                  <Route
+                                    path="/profile"
+                                    element={<ProfilePage />}
                                   />
                                 </Routes>
                               </main>

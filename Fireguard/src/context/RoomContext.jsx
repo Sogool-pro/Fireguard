@@ -25,39 +25,56 @@ export function RoomProvider({ children }) {
     const unsub = onValue(sensorRef, (snapshot) => {
       const data = snapshot.val() || {};
       const now = Date.now();
-      const roomsArr = Object.entries(data).map(([node, sensor]) => ({
-        // include the node id so other parts (settings) can reference it
-        nodeId: node,
-        // roomName will be replaced below if a custom name exists
-        roomName: `ROOM NO. ${node.replace("NODE", "")}`,
-        temperature: sensor.temperature ?? 0,
-        humidity: sensor.humidity ?? 0,
-        smoke: sensor.Gas_and_Smoke ?? 0,
-        carbonMonoxide: sensor.carbon_monoxide ?? 0,
-        flame: sensor.flame ?? 0,
-        fire:
-          sensor.flame === 1 ||
-          (sensor.alert_level && sensor.alert_level.toLowerCase() === "alert"),
-        status:
-          sensor.alert_active === false || sensor.silenced
-            ? "Silenced"
-            : "Active",
-        alert_level: sensor.alert_level,
-        alert_message: sensor.alert_message,
-        silenced: sensor.silenced,
-        lastUpdated: now,
-        isOffline: false,
-      }));
+      const roomsArr = Object.entries(data).map(([node, sensor]) => {
+        // Parse the sensor's timestamp to detect actual offline status
+        let sensorTimestamp = now;
+        if (sensor.timestamp) {
+          // Parse "YYYY-MM-DD HH:mm:ss" format
+          try {
+            const parsedDate = new Date(sensor.timestamp.replace(" ", "T"));
+            sensorTimestamp = parsedDate.getTime();
+          } catch (e) {
+            sensorTimestamp = now;
+          }
+        }
+        
+        return {
+          // include the node id so other parts (settings) can reference it
+          nodeId: node,
+          // roomName will be replaced below if a custom name exists
+          roomName: `ROOM NO. ${node.replace("NODE", "")}`,
+          temperature: sensor.temperature ?? 0,
+          humidity: sensor.humidity ?? 0,
+          smoke: sensor.Gas_and_Smoke ?? 0,
+          carbonMonoxide: sensor.carbon_monoxide ?? 0,
+          flame: sensor.flame ?? 0,
+          fire:
+            sensor.flame === 1 ||
+            (sensor.alert_level && sensor.alert_level.toLowerCase() === "alert"),
+          status:
+            sensor.alert_active === false || sensor.silenced
+              ? "Silenced"
+              : "Active",
+          alert_level: sensor.alert_level,
+          alert_message: sensor.alert_message,
+          silenced: sensor.silenced,
+          lastUpdated: sensorTimestamp,
+          isOffline: false,
+          sensorTimestampString: sensor.timestamp,
+        };
+      });
       // If there are custom room names loaded, apply them
       setRooms((prev) => {
-        // try to preserve any previous mapping from nodeId to custom names
+        // try to preserve any previous mapping from nodeId to custom names and offline state
         return roomsArr.map((r) => {
           const existing = prev.find((p) => p.nodeId === r.nodeId);
-          if (existing && existing.customName) {
+          if (existing) {
             return {
               ...r,
-              roomName: existing.customName,
+              roomName: existing.customName || r.roomName,
               customName: existing.customName,
+              // IMPORTANT: Preserve the offline state set by the offline detection logic
+              isOffline: existing.isOffline,
             };
           }
           return r;

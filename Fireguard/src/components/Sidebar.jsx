@@ -41,7 +41,7 @@ export default function Sidebar() {
     },
     {
       path: "/analytics",
-      text: "Analytics",
+      text: "Reports",
       icon: <BarChart3 size={20} />,
       active: location.pathname === "/analytics",
     },
@@ -58,6 +58,13 @@ export default function Sidebar() {
       icon: <Settings size={20} />,
       active: location.pathname === "/settings",
       adminOnly: true,
+    },
+    {
+      path: "/profile",
+      text: "Settings",
+      icon: <Settings size={20} />,
+      active: location.pathname === "/profile",
+      userOnly: true,
     },
   ];
 
@@ -79,13 +86,13 @@ export default function Sidebar() {
           expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative"
         } ${expanded ? "w-64" : "w-20"}`}
       >
-        <nav 
+        <nav
           className="h-full flex flex-col border-r-blue-50 shadow-[8px_0_17px_rgba(0,0,0,0.07)] relative"
           style={{
             backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4)), url(${bgAlpha})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         >
           <div className="p-4 pb-2 flex justify-between items-center relative z-10">
@@ -120,6 +127,10 @@ export default function Sidebar() {
                     // while loading, hide admin-only links; only show when role === 'admin'
                     return !loading && role === "admin";
                   }
+                  if (item.userOnly) {
+                    // Show only for non-admin users
+                    return !loading && role !== "admin";
+                  }
                   return true;
                 })
                 .map((item) => (
@@ -140,11 +151,15 @@ export default function Sidebar() {
               {user?.displayName || user?.email ? (
                 <span className="text-white text-xs font-semibold">
                   {(() => {
-                    const name = user?.displayName || user?.email?.split("@")[0] || "U";
+                    const name =
+                      user?.displayName || user?.email?.split("@")[0] || "U";
                     if (name.length <= 2) return name.toUpperCase().slice(0, 2);
                     const parts = name.trim().split(" ");
-                    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-                    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                    if (parts.length === 1)
+                      return parts[0].slice(0, 2).toUpperCase();
+                    return (
+                      parts[0][0] + parts[parts.length - 1][0]
+                    ).toUpperCase();
                   })()}
                 </span>
               ) : (
