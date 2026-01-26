@@ -47,7 +47,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
       // Reauthenticate user before changing password
       const credential = EmailAuthProvider.credential(
         user.email,
-        currentPassword
+        currentPassword,
       );
       await reauthenticateWithCredential(user, credential);
 
