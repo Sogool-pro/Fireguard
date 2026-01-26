@@ -97,7 +97,7 @@ export default function UsersPage() {
       (err) => {
         console.error("Failed to load users:", err);
         setLoading(false);
-      }
+      },
     );
     return () => unsub();
   }, []);
@@ -321,7 +321,7 @@ export default function UsersPage() {
                           const currentUid = auth?.currentUser?.uid;
                           if (currentUid && u.id === currentUid) {
                             alert(
-                              "You cannot delete the currently signed-in user."
+                              "You cannot delete the currently signed-in user.",
                             );
                             return;
                           }
@@ -604,7 +604,8 @@ export default function UsersPage() {
 
               <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-800">
-                  <strong>Temporary Password:</strong> A randomly generated password will be created and sent to the user's email address.
+                  <strong>Temporary Password:</strong> A randomly generated
+                  password will be created and sent to the user's email address.
                 </p>
               </div>
 
@@ -626,10 +627,7 @@ export default function UsersPage() {
                 </button>
                 <button
                   onClick={async () => {
-                    if (
-                      !newUser.fullName.trim() ||
-                      !newUser.email.trim()
-                    ) {
+                    if (!newUser.fullName.trim() || !newUser.email.trim()) {
                       alert("Please fill in all required fields");
                       return;
                     }
@@ -645,7 +643,7 @@ export default function UsersPage() {
                       const cred = await createUserWithEmailAndPassword(
                         auth,
                         newUser.email,
-                        tempPassword
+                        tempPassword,
                       );
                       const user = cred.user;
 
@@ -668,11 +666,15 @@ export default function UsersPage() {
 
                       // Send temporary password via EmailJS
                       try {
-                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                          user_email: newUser.email,
-                          user_name: newUser.fullName,
-                          temp_password: tempPassword,
-                        });
+                        await emailjs.send(
+                          EMAILJS_SERVICE_ID,
+                          EMAILJS_TEMPLATE_ID,
+                          {
+                            user_email: newUser.email,
+                            user_name: newUser.fullName,
+                            temp_password: tempPassword,
+                          },
+                        );
                         console.log("Email sent successfully!");
                       } catch (emailError) {
                         console.error("Failed to send email:", emailError);
@@ -689,7 +691,9 @@ export default function UsersPage() {
                         role: "user",
                       });
                       setAddUserModal(false);
-                      alert("User created successfully! Temporary password sent to email.");
+                      alert(
+                        "User created successfully! Temporary password sent to email.",
+                      );
                     } catch (err) {
                       console.error("Failed to create user:", err);
                       alert("Failed to create user: " + err.message);
@@ -760,7 +764,7 @@ export default function UsersPage() {
                   try {
                     setProcessing(true);
                     await deleteDoc(
-                      doc(firestore, "users", deleteConfirm.user.id)
+                      doc(firestore, "users", deleteConfirm.user.id),
                     );
                     setDeleteConfirm({ open: false, user: null });
                   } catch (err) {

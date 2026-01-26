@@ -2,22 +2,31 @@ import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 import fireguardLogo from "../assets/fireguard-logo.png";
 import bgAlpha from "../assets/bg-alpha.jpg";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleLogin = (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     signInWithEmailAndPassword(auth, username, password)
       .then(() => {
+        showToast("Login successful!", "success");
         navigate("/"); // Redirect to dashboard
       })
       .catch((error) => {
-        alert("Login failed: " + error.message);
+        setError(error.message);
+        showToast(`Login failed: ${error.message}`, "error");
+        setLoading(false);
       });
   };
 
@@ -157,14 +166,22 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                disabled={loading}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
               />
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                  ❌ {error}
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => navigate("/forgot-password")}
                   className="text-sm text-red-600 hover:text-red-700 font-semibold"
+                  disabled={loading}
                 >
                   Forgot password?
                 </button>
@@ -172,9 +189,13 @@ export default function LoginPage() {
               <div className="pt-1">
                 <button
                   type="submit"
-                  className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Login
+                  {loading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  {loading ? "Logging in..." : "Login"}
                 </button>
               </div>
               <div className="text-center">

@@ -3,6 +3,7 @@ import { auth, firestore } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { FaUser, FaLock } from "react-icons/fa";
+import { useToast } from "../context/ToastContext";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 
 export default function ProfilePage() {
@@ -10,6 +11,7 @@ export default function ProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [loadingName, setLoadingName] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const { showToast } = useToast();
 
   // Load user data
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function ProfilePage() {
   // Handle update display name
   const handleUpdateName = async () => {
     if (!displayName.trim()) {
-      alert("Name cannot be empty");
+      showToast("Name cannot be empty", "warning");
       return;
     }
     setLoadingName(true);
@@ -47,10 +49,10 @@ export default function ProfilePage() {
         });
       }
       setEditingName(false);
-      alert("Name updated successfully!");
+      showToast("Name updated successfully!", "success");
     } catch (err) {
       console.error(err);
-      alert("Failed to update name: " + err.message);
+      showToast(`Failed to update name: ${err.message}`, "error");
     } finally {
       setLoadingName(false);
     }

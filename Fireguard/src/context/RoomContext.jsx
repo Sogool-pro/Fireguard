@@ -6,7 +6,7 @@ import React, {
   useEffect,
 } from "react";
 import { db } from "../firebase";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, update } from "firebase/database";
 import buzzer from "../public/buzzer.mp3";
 const RoomContext = createContext();
 
@@ -37,7 +37,7 @@ export function RoomProvider({ children }) {
             sensorTimestamp = now;
           }
         }
-        
+
         return {
           // include the node id so other parts (settings) can reference it
           nodeId: node,
@@ -50,7 +50,8 @@ export function RoomProvider({ children }) {
           flame: sensor.flame ?? 0,
           fire:
             sensor.flame === 1 ||
-            (sensor.alert_level && sensor.alert_level.toLowerCase() === "alert"),
+            (sensor.alert_level &&
+              sensor.alert_level.toLowerCase() === "alert"),
           status:
             sensor.alert_active === false || sensor.silenced
               ? "Silenced"
@@ -96,6 +97,15 @@ export function RoomProvider({ children }) {
 
           // If the room just went offline, mark it Offline and zero readings
           if (isNowOffline && !room.isOffline) {
+            // Auto-silence the room in Firebase when it goes offline
+            if (room.nodeId) {
+              update(ref(db, `sensor_data/${room.nodeId}`), {
+                silenced: true,
+              }).catch((err) =>
+                console.error("Failed to silence offline room:", err),
+              );
+            }
+
             return {
               ...room,
               isOffline: true,
@@ -106,6 +116,7 @@ export function RoomProvider({ children }) {
               carbonMonoxide: 0,
               flame: 0,
               fire: false,
+              silenced: true,
             };
           }
 
@@ -120,7 +131,7 @@ export function RoomProvider({ children }) {
           }
 
           return room;
-        })
+        }),
       );
     }, 5000); // Check every 5 seconds
     return () => clearInterval(interval);
@@ -139,7 +150,7 @@ export function RoomProvider({ children }) {
           if (name) return { ...r, roomName: name, customName: name };
           // if no custom name, keep the default roomName (constructed from nodeId)
           return { ...r };
-        })
+        }),
       );
     });
     return () => unsubNames();
@@ -155,7 +166,7 @@ export function RoomProvider({ children }) {
           if (!r.nodeId) return r;
           const meta = data[r.nodeId] || {};
           return { ...r, archived: !!meta.archived, onRepair: !!meta.onRepair };
-        })
+        }),
       );
     });
     return () => unsubMeta();

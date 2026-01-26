@@ -61,7 +61,10 @@ export default function RoomTile(props) {
       const now = Date.now();
       const OFFLINE_THRESHOLD = 60000; // 60 seconds
       const timeSinceUpdate = now - (room.lastUpdated || now);
-      const remainingTime = Math.max(0, Math.ceil((OFFLINE_THRESHOLD - timeSinceUpdate) / 1000));
+      const remainingTime = Math.max(
+        0,
+        Math.ceil((OFFLINE_THRESHOLD - timeSinceUpdate) / 1000),
+      );
       setTimeUntilOffline(remainingTime);
     }, 1000); // Update every second
     return () => clearInterval(timer);
@@ -72,8 +75,8 @@ export default function RoomTile(props) {
       prev.map((r) =>
         r.nodeId === room.nodeId
           ? { ...r, status: r.status === "Active" ? "Silenced" : "Active" }
-          : r
-      )
+          : r,
+      ),
     );
     // Determine node key from nodeId if available, otherwise fallback to parsing roomName
     let nodeKey = null;
@@ -95,8 +98,8 @@ export default function RoomTile(props) {
         room.isOffline
           ? "bg-gray-300"
           : blinkingClass
-          ? blinkingClass
-          : "bg-white"
+            ? blinkingClass
+            : "bg-white"
       }`}
       onClick={() => showRoomChart(room)}
     >
@@ -178,13 +181,13 @@ export default function RoomTile(props) {
       {!room.isOffline && (
         <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
           <span>Last Update: {room.sensorTimestampString || "N/A"}</span>
-          <span 
+          <span
             className={`px-2 py-1 rounded ${
-              timeUntilOffline <= 10 
-                ? "bg-red-100 text-red-700 font-semibold" 
-                : timeUntilOffline <= 30 
-                ? "bg-yellow-100 text-yellow-700" 
-                : "bg-gray-100 text-gray-700"
+              timeUntilOffline <= 10
+                ? "bg-red-100 text-red-700 font-semibold"
+                : timeUntilOffline <= 30
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-gray-100 text-gray-700"
             }`}
           >
             Offline in: {timeUntilOffline}s

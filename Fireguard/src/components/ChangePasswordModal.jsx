@@ -5,6 +5,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
+import { useToast } from "../context/ToastContext";
 
 export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -12,6 +13,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { showToast } = useToast();
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      alert("Password changed successfully!");
+      showToast("Password changed successfully!", "success");
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {

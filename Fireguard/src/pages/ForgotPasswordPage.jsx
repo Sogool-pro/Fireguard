@@ -1,36 +1,15 @@
 import React, { useState } from "react";
 import { auth } from "../firebase";
-import emailjs from "@emailjs/browser";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import fireguardLogo from "../assets/fireguard-logo.png";
 import bgAlpha from "../assets/bg-alpha.jpg";
-
-// EmailJS Configuration
-const EMAILJS_PUBLIC_KEY = "of9oEgeazNJq_sjCb";
-const EMAILJS_SERVICE_ID = "service_dnalnvl";
-const EMAILJS_TEMPLATE_ID = "template_iddo68t";
-
-emailjs.init(EMAILJS_PUBLIC_KEY);
-
-// Generate temporary password
-function generateTemporaryPassword() {
-  const length = 12;
-  const charset =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return password;
-}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
-  const [userDisplayName, setUserDisplayName] = useState("");
   const navigate = useNavigate();
 
   const handleForgotPassword = async (e) => {
@@ -45,31 +24,37 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      // Generate temporary password first
-      const newTempPassword = generateTemporaryPassword();
-      setTempPassword(newTempPassword);
+      // Send password reset email using Firebase's built-in function with custom action URL
+      // The custom URL will redirect to our ResetPasswordPage instead of Firebase's default page
+      const actionCodeSettings = {
+        url: `${window.location.origin}/#/reset-password`, // Your custom reset page
+        handleCodeInApp: false, // Firebase will handle the code in the email link
+      };
 
-      // Send temporary password via EmailJS
-      try {
-        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-          user_email: email,
-          user_name: email.split("@")[0], // Use email prefix as name
-          temp_password: newTempPassword,
-        });
-        console.log("Password reset email sent successfully!");
-      } catch (emailError) {
-        console.error("Failed to send email:", emailError);
-        setError("Failed to send email. Please try again.");
-        setLoading(false);
-        return;
-      }
+      await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
 
+      console.log("Password reset email sent successfully!");
       // Show success message
       setSuccess(true);
       setEmail("");
     } catch (err) {
-      console.error(err);
-      setError(err.message || "An error occurred. Please try again.");
+      console.error("Error sending password reset email:", err);
+
+      // Detailed error handling
+      if (err.code === "auth/user-not-found") {
+        setError(
+          "No user found with this email address. Please check and try again.",
+        );
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address. Please check and try again.");
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Too many reset requests. Please try again later.");
+      } else {
+        setError(
+          err.message ||
+            "Failed to send reset email. Please try again or contact support.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -136,7 +121,7 @@ export default function ForgotPasswordPage() {
             Forgot Password?
           </h1>
           <p className="text-gray-600 text-sm mb-6">
-            Enter your email and we'll send you a temporary password
+            Enter your email and we'll send you a password reset link
           </p>
 
           {!success ? (
@@ -165,9 +150,12 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="w-full bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading ? "Sending..." : "Send Temporary Password"}
+                {loading && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                )}
+                {loading ? "Sending..." : "Send Reset Link"}
               </button>
 
               <div className="text-center">
@@ -190,11 +178,14 @@ export default function ForgotPasswordPage() {
                   ✓ Email Sent!
                 </h2>
                 <p className="text-sm text-green-700">
-                  We've sent a temporary password to your email address.
+                  We've sent a password reset link to your email address.
                 </p>
                 <p className="text-sm text-green-700 mt-2">
-                  Please check your inbox and use the temporary password to log
-                  in.
+                  Please check your inbox and click the link to create a new
+                  password.
+                </p>
+                <p className="text-sm text-green-600 mt-3 font-medium">
+                  Note: The link will expire in 1 hour.
                 </p>
               </div>
 
