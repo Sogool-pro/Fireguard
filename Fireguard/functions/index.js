@@ -214,3 +214,68 @@ exports.resetPasswordByEmail = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+// Function to delete user from both Firebase Auth and Firestore
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  const { uid } = data;
+
+  if (!uid) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "User ID (uid) is required",
+    );
+  }
+
+  // Check if user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "Only authenticated admins can delete users",
+    );
+  }
+
+  try {
+    console.log(`User deletion requested for UID: ${uid}`);
+
+    // Step 1: Delete from Firebase Authentication
+    try {
+      await admin.auth().deleteUser(uid);
+      console.log(`User deleted from Firebase Auth: ${uid}`);
+    } catch (error) {
+      console.error("Auth deletion failed:", error.code, error.message);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to delete user from authentication: " + error.message,
+      );
+    }
+
+    // Step 2: Delete from Firestore
+    try {
+      await admin.firestore().collection("users").doc(uid).delete();
+      console.log(`User deleted from Firestore: ${uid}`);
+    } catch (error) {
+      console.error("Firestore deletion failed:", error.code, error.message);
+      throw new functions.https.HttpsError(
+        "internal",
+        "User deleted from auth but failed to remove from database: " +
+          error.message,
+      );
+    }
+
+    return {
+      success: true,
+      message: "User successfully deleted from authentication and database",
+    };
+  } catch (error) {
+    console.error("User deletion function error:", error);
+    // Re-throw HttpsError if already formatted
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    // Generic error fallback
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to delete user. Please try again or contact support.",
+    );
+  }
+});

@@ -62,11 +62,32 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
       onClose();
     } catch (err) {
       console.error(err);
-      if (err.code === "auth/wrong-password") {
-        setError("Current password is incorrect");
-      } else {
-        setError("Failed to change password: " + err.message);
+
+      let errorMessage = "";
+
+      // Map Firebase error codes to user-friendly messages
+      switch (err.code) {
+        case "auth/wrong-password":
+          errorMessage = "Current password is incorrect. Please try again.";
+          break;
+        case "auth/weak-password":
+          errorMessage =
+            "New password is too weak. Please use at least 6 characters.";
+          break;
+        case "auth/requires-recent-login":
+          errorMessage =
+            "Please log out and log back in before changing your password.";
+          break;
+        case "auth/user-disabled":
+          errorMessage =
+            "This account has been disabled. Please contact support.";
+          break;
+        default:
+          errorMessage =
+            err.message || "Failed to change password. Please try again.";
       }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -84,15 +84,32 @@ export default function ResetPasswordPage() {
     } catch (err) {
       console.error("Error resetting password:", err);
 
-      if (err.code === "auth/expired-action-code") {
-        setError("Reset link has expired. Please request a new one.");
-      } else if (err.code === "auth/invalid-action-code") {
-        setError("Invalid reset link. Please request a new one.");
-      } else if (err.code === "auth/weak-password") {
-        setError("Password is too weak. Please use a stronger password.");
-      } else {
-        setError(err.message || "Failed to reset password. Please try again.");
+      let errorMessage = "";
+
+      // Map Firebase error codes to user-friendly messages
+      switch (err.code) {
+        case "auth/expired-action-code":
+          errorMessage =
+            "This password reset link has expired. Please request a new one.";
+          break;
+        case "auth/invalid-action-code":
+          errorMessage =
+            "This password reset link is invalid. Please request a new one.";
+          break;
+        case "auth/weak-password":
+          errorMessage =
+            "Password is too weak. Please use at least 6 characters with a mix of letters and numbers.";
+          break;
+        case "auth/user-disabled":
+          errorMessage =
+            "This account has been disabled. Please contact support.";
+          break;
+        default:
+          errorMessage =
+            err.message || "Failed to reset password. Please try again.";
       }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -40,21 +40,29 @@ export default function ForgotPasswordPage() {
     } catch (err) {
       console.error("Error sending password reset email:", err);
 
-      // Detailed error handling
-      if (err.code === "auth/user-not-found") {
-        setError(
-          "No user found with this email address. Please check and try again.",
-        );
-      } else if (err.code === "auth/invalid-email") {
-        setError("Invalid email address. Please check and try again.");
-      } else if (err.code === "auth/too-many-requests") {
-        setError("Too many reset requests. Please try again later.");
-      } else {
-        setError(
-          err.message ||
-            "Failed to send reset email. Please try again or contact support.",
-        );
+      let errorMessage = "";
+
+      // Map Firebase error codes to user-friendly messages
+      switch (err.code) {
+        case "auth/user-not-found":
+          errorMessage =
+            "No user account found with this email address. Please check and try again.";
+          break;
+        case "auth/invalid-email":
+          errorMessage =
+            "Invalid email address format. Please check and try again.";
+          break;
+        case "auth/too-many-requests":
+          errorMessage =
+            "Too many password reset requests. Please try again later.";
+          break;
+        default:
+          errorMessage =
+            err.message ||
+            "Failed to send reset email. Please try again or contact support.";
       }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

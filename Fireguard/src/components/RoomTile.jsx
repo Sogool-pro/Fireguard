@@ -3,8 +3,6 @@ import { FaHome, FaThermometerHalf, FaCloud, FaPowerOff } from "react-icons/fa";
 import { MdCo2 } from "react-icons/md";
 import { GiSmokeBomb } from "react-icons/gi";
 import { useRoom } from "../context/RoomContext";
-import { db } from "../firebase";
-import { ref, update } from "firebase/database";
 import { useRoomChartModal } from "../context/RoomChartModalContext";
 
 // Blinking Logic
@@ -15,8 +13,9 @@ function getBlinkingClass({
   temperature,
   smoke,
   carbonMonoxide,
+  isAlarmSilenced,
 }) {
-  if (status !== "Active") return "";
+  if (status !== "Active" || isAlarmSilenced) return "";
   const thresholdAlarm =
     fire || temperature > 55 || smoke > 600 || carbonMonoxide > 70;
   if (alert_level && alert_level.toLowerCase() === "warning")
@@ -31,8 +30,9 @@ export default function RoomTile(props) {
   const room = props;
   const { showRoomChart } = useRoomChartModal();
   const [timeUntilOffline, setTimeUntilOffline] = useState(60);
+  const [isAlarmSilenced, setIsAlarmSilenced] = useState(false);
 
-  const blinkingClass = getBlinkingClass(room);
+  const blinkingClass = getBlinkingClass({ ...room, isAlarmSilenced });
 
   // Control global buzzer based on any blinking tile
   React.useEffect(() => {
@@ -47,8 +47,8 @@ export default function RoomTile(props) {
       // Check if any other room is blinking (exclude this room by nodeId if present)
       const anyBlinking = rooms.some((r) => {
         if (r.nodeId && room.nodeId)
-          return getBlinkingClass(r) && r.nodeId !== room.nodeId;
-        return getBlinkingClass(r) && r.roomName !== room.roomName;
+          return getBlinkingClass({ ...r, isAlarmSilenced: false }) && r.nodeId !== room.nodeId;
+        return getBlinkingClass({ ...r, isAlarmSilenced: false }) && r.roomName !== room.roomName;
       });
       if (!anyBlinking) setBuzzerOn(false);
     }
@@ -71,25 +71,7 @@ export default function RoomTile(props) {
   }, [room.lastUpdated]);
 
   const handlePowerClick = () => {
-    setRooms((prev) =>
-      prev.map((r) =>
-        r.nodeId === room.nodeId
-          ? { ...r, status: r.status === "Active" ? "Silenced" : "Active" }
-          : r,
-      ),
-    );
-    // Determine node key from nodeId if available, otherwise fallback to parsing roomName
-    let nodeKey = null;
-    if (room.nodeId) nodeKey = room.nodeId;
-    else {
-      const nodeMatch = room.roomName.match(/ROOM NO\. ?(\d+)/i);
-      if (nodeMatch) nodeKey = `NODE${nodeMatch[1]}`;
-    }
-    if (nodeKey) {
-      update(ref(db, `sensor_data/${nodeKey}`), {
-        silenced: room.status === "Active" ? true : false,
-      });
-    }
+    setIsAlarmSilenced(!isAlarmSilenced);
   };
 
   return (
@@ -115,16 +97,21 @@ export default function RoomTile(props) {
             e.stopPropagation();
             handlePowerClick();
           }}
-          className={`p-1 rounded-full transition-colors cursor-pointer ${
-            room.status === "Active"
-              ? "bg-green-100 hover:bg-green-200"
-              : "bg-gray-200 hover:bg-gray-300"
+          disabled={room.isOffline}
+          className={`p-1 rounded-full transition-colors ${
+            room.isOffline
+              ? "cursor-not-allowed opacity-50"
+              : `cursor-pointer ${
+                  isAlarmSilenced
+                    ? "bg-gray-200 hover:bg-gray-300"
+                    : "bg-green-100 hover:bg-green-200"
+                }`
           }`}
-          aria-label="Toggle Room Status"
+          aria-label="Silence Alarm"
         >
           <FaPowerOff
             className={`text-2xl ${
-              room.status === "Active" ? "text-green-600" : "text-gray-500"
+              isAlarmSilenced ? "text-gray-500" : "text-green-600"
             }`}
           />
         </button>

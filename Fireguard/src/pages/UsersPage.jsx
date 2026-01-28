@@ -19,6 +19,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 import emailjs from "@emailjs/browser";
 
 // Initialize EmailJS
@@ -66,6 +67,7 @@ export default function UsersPage() {
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [editName, setEditName] = useState("");
@@ -103,13 +105,15 @@ export default function UsersPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    return users.filter((u) => {
-      const text = (u.displayName || u.email || "").toLowerCase();
-      if (q && !text.includes(q.toLowerCase())) return false;
-      if (roleFilter !== "all" && (u.role || "user") !== roleFilter)
-        return false;
-      return true;
-    });
+    return users
+      .filter((u) => !u.isDeleted) // Hide deleted users from the list
+      .filter((u) => {
+        const text = (u.displayName || u.email || "").toLowerCase();
+        if (q && !text.includes(q.toLowerCase())) return false;
+        if (roleFilter !== "all" && (u.role || "user") !== roleFilter)
+          return false;
+        return true;
+      });
   }, [users, q, roleFilter]);
 
   const totals = useMemo(() => {
@@ -763,13 +767,28 @@ export default function UsersPage() {
                   if (!deleteConfirm.user) return;
                   try {
                     setProcessing(true);
-                    await deleteDoc(
+
+                    // Soft delete: Mark user as deleted in Firestore
+                    // This prevents them from logging in but keeps their auth account for recovery
+                    await updateDoc(
                       doc(firestore, "users", deleteConfirm.user.id),
+                      {
+                        isDeleted: true,
+                        deletedAt: serverTimestamp(),
+                      },
                     );
+
                     setDeleteConfirm({ open: false, user: null });
+                    showToast(
+                      `User ${deleteConfirm.user.displayName || deleteConfirm.user.email} deleted successfully!`,
+                      "success",
+                    );
                   } catch (err) {
                     console.error("Failed to delete user:", err);
-                    alert("Failed to delete user. See console for details.");
+                    showToast(
+                      `Failed to delete user: ${err.message || "See console for details"}`,
+                      "error",
+                    );
                   } finally {
                     setProcessing(false);
                   }

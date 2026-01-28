@@ -90,7 +90,33 @@ export default function RegisterPage() {
       setEmail("");
     } catch (err) {
       console.error(err);
-      setError("Registration failed: " + err.message);
+
+      let errorMessage = "";
+
+      // Map Firebase error codes to user-friendly messages
+      switch (err.code) {
+        case "auth/email-already-in-use":
+          errorMessage =
+            "This email address is already registered. Please use a different email or try logging in.";
+          break;
+        case "auth/invalid-email":
+          errorMessage =
+            "Invalid email address format. Please check and try again.";
+          break;
+        case "auth/weak-password":
+          errorMessage =
+            "Password is too weak. Please use at least 6 characters with a mix of letters and numbers.";
+          break;
+        case "auth/operation-not-allowed":
+          errorMessage =
+            "Email/password registration is not enabled. Please contact support.";
+          break;
+        default:
+          errorMessage =
+            err.message || "Registration failed. Please try again.";
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

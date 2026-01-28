@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { auth } from "../firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import React, { useState, useEffect } from "react";
+import { auth, firestore } from "../firebase";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
+import { doc, getDoc } from "firebase/firestore";
 import fireguardLogo from "../assets/fireguard-logo.png";
 import bgAlpha from "../assets/bg-alpha.jpg";
 
@@ -14,20 +15,70 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    signInWithEmailAndPassword(auth, username, password)
-      .then(() => {
-        showToast("Login successful!", "success");
-        navigate("/"); // Redirect to dashboard
-      })
-      .catch((error) => {
-        setError(error.message);
-        showToast(`Login failed: ${error.message}`, "error");
+
+    try {
+      // Sign in user
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        username,
+        password,
+      );
+      const user = userCredential.user;
+
+      // Check if user is marked as deleted
+      const userDoc = await getDoc(doc(firestore, "users", user.uid));
+
+      if (userDoc.exists() && userDoc.data().isDeleted) {
+        // User is deleted, sign them out
+        await signOut(auth);
+        setError("This account has been deleted and cannot be accessed.");
+        showToast("Account deleted: This account has been removed.", "error");
         setLoading(false);
-      });
+        return;
+      }
+
+      showToast("Login successful!", "success");
+      navigate("/"); // Redirect to dashboard
+    } catch (error) {
+      let errorMessage = "";
+
+      // Map Firebase error codes to user-friendly messages
+      switch (error.code) {
+        case "auth/user-not-found":
+          errorMessage =
+            "User account does not exist. Please check your email or create a new account.";
+          break;
+        case "auth/wrong-password":
+          errorMessage =
+            "Incorrect password. Please try again or use 'Forgot password?'";
+          break;
+        case "auth/invalid-email":
+          errorMessage =
+            "Invalid email address format. Please check and try again.";
+          break;
+        case "auth/invalid-credential":
+          errorMessage =
+            "Invalid email or password. Please check and try again.";
+          break;
+        case "auth/user-disabled":
+          errorMessage =
+            "This account has been disabled. Please contact support.";
+          break;
+        case "auth/too-many-requests":
+          errorMessage = "Too many login attempts. Please try again later.";
+          break;
+        default:
+          errorMessage = error.message || "Login failed. Please try again.";
+      }
+
+      setError(errorMessage);
+      showToast(`Login failed: ${errorMessage}`, "error");
+      setLoading(false);
+    }
   };
 
   return (
