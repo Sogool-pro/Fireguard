@@ -171,16 +171,16 @@ export default function Sidebar() {
                 expanded ? "w-52 ml-3 opacity-100" : "w-0 opacity-0"
               }`}
             >
-              <div className="leading-4">
-                <h4 className="font-semibold text-white">
+              <div className="leading-4 flex-1 min-w-0">
+                <h4 className="font-semibold text-white truncate">
                   {user?.displayName || user?.email?.split("@")[0] || "User"}
                 </h4>
-                <span className="text-xs text-white/80">
+                <span className="text-xs text-white/80 truncate block">
                   {user?.email || ""}
                 </span>
               </div>
               <button
-                className="p-1 rounded-full hover:bg-white/20 text-white"
+                className="p-1 rounded-full hover:bg-white/20 text-white flex-shrink-0 ml-2"
                 onClick={() => setMenuOpen((open) => !open)}
               >
                 <MoreVertical size={15} />

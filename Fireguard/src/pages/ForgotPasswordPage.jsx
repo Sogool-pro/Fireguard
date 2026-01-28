@@ -24,14 +24,8 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      // Send password reset email using Firebase's built-in function with custom action URL
-      // The custom URL will redirect to our ResetPasswordPage instead of Firebase's default page
-      const actionCodeSettings = {
-        url: `${window.location.origin}/#/reset-password`, // Your custom reset page
-        handleCodeInApp: false, // Firebase will handle the code in the email link
-      };
-
-      await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
+      // Send password reset email using Firebase's built-in function
+      await sendPasswordResetEmail(auth, email.trim());
 
       console.log("Password reset email sent successfully!");
       // Show success message
