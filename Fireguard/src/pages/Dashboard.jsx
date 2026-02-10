@@ -79,11 +79,13 @@ export default function Dashboard() {
             >
               <span className="mr-3 md:mr-4 block">
                 <span className="font-semibold text-white">Temperature:</span>{" "}
-                Normal {"≤"}
-                35°C, Warning 36-50°C, Alert {">"}50°C
+                Normal {"<"}
+                40°C, Warning 40-49°C, Alert {">"}50°C
               </span>
               <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Smoke and Gas (ratio):</span>{" "}
+                <span className="font-semibold text-white">
+                  Smoke and Gas (ratio):
+                </span>{" "}
                 Normal {"≤"}
                 1.5, Warning 1.6-3.0, Alert {">"}3.0
               </span>
@@ -105,7 +107,9 @@ export default function Dashboard() {
             {/* Desktop: legend layout matching the provided screenshot (centered) */}
             <div className="hidden md:flex md:items-center md:justify-center md:gap-6 w-full">
               <div className="flex flex-col items-start ml-16 mr-4">
-                <span className="font-semibold text-white mb-2 ml-16">Legend:</span>
+                <span className="font-semibold text-white mb-2 ml-16">
+                  Legend:
+                </span>
                 <div className="flex items-center gap-2 mb-2 ml-16">
                   <span className="inline-block w-4 h-4 rounded-[4px] bg-yellow-400 animate-pulse"></span>
                   <span className="text-gray-300">Warning</span>
@@ -123,7 +127,7 @@ export default function Dashboard() {
                 <div className="font-semibold">Humidity</div>
                 <div className="font-semibold">Flame</div>
 
-                <div>36-50°C</div>
+                <div>40-49°C</div>
                 <div>1.6-3.0 ratio</div>
                 <div>1.6-3.0 ratio</div>
                 <div>81-100%</div>

@@ -35,14 +35,14 @@
 #define NODE2_BUTTON_PIN 32
 
 // Thresholds (based on safety standards)
-#define TEMP_NORMAL_MAX 35.0
-#define TEMP_WARNING_MAX 50.0
+#define TEMP_NORMAL_MAX 40.0
+#define TEMP_WARNING_MAX 49.0
 #define HUMIDITY_NORMAL_MAX 80.0
 #define HUMIDITY_WARNING_MAX 100.0
-#define MQ2_GAS_NORMAL_MAX 500
-#define MQ2_GAS_WARNING_MAX 800
-#define MQ7_CO_NORMAL_MAX 500
-#define MQ7_CO_WARNING_MAX 800
+#define MQ2_GAS_NORMAL_MAX 600      // Ratio ≤1.5
+#define MQ2_GAS_WARNING_MAX 1200     // Ratio ≤3.0
+#define MQ7_CO_NORMAL_MAX 600        // Ratio ≤1.5
+#define MQ7_CO_WARNING_MAX 1200      // Ratio ≤3.0
 #define FLAME_THRESHOLD 1
 
 // Hardware Pins

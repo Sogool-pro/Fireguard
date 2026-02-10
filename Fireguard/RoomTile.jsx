@@ -5,14 +5,14 @@ import OccupiedIcon from "../assets/occupied.svg";
 import UnoccupiedIcon from "../assets/unoccupied.svg";
 
 // Add these constants at the top of the file, matching IoT thresholds
-const TEMP_NORMAL_MAX = 35.0; // Normal indoor temp max
-const TEMP_WARNING_MAX = 50.0; // Warning temp max
+const TEMP_NORMAL_MAX = 40.0; // Normal indoor temp max
+const TEMP_WARNING_MAX = 49.0; // Warning temp max
 const HUMIDITY_NORMAL_MAX = 80.0; // Normal humidity max
 const HUMIDITY_WARNING_MAX = 100.0; // Warning humidity max
-const MQ2_GAS_NORMAL_MAX = 500; // Normal gas level max
-const MQ2_GAS_WARNING_MAX = 800; // Warning gas level max
-const MQ7_CO_NORMAL_MAX = 500; // Normal CO level max
-const MQ7_CO_WARNING_MAX = 800; // Warning CO level max
+const MQ2_GAS_NORMAL_MAX = 600; // Normal gas level max (Ratio ≤1.5)
+const MQ2_GAS_WARNING_MAX = 1200; // Warning gas level max (Ratio ≤3.0)
+const MQ7_CO_NORMAL_MAX = 600; // Normal CO level max (Ratio ≤1.5)
+const MQ7_CO_WARNING_MAX = 1200; // Warning CO level max (Ratio ≤3.0)
 
 const RoomTile = ({
   room,
@@ -75,19 +75,19 @@ const RoomTile = ({
   const temptext = HighTemperature
     ? "redtext"
     : ElevatedTemperature
-    ? "yellowtext"
-    : "blacktext";
+      ? "yellowtext"
+      : "blacktext";
 
   // Update dot color logic to include all conditions
   const dotColor = isDeactivated
     ? "gray"
     : isFlameDetected
-    ? "red"
-    : HighTemperature || HighGas || HighCO || HighHumidity
-    ? "red"
-    : ElevatedTemperature || ElevatedGas || ElevatedCO || ElevatedHumidity
-    ? "yellow"
-    : "green";
+      ? "red"
+      : HighTemperature || HighGas || HighCO || HighHumidity
+        ? "red"
+        : ElevatedTemperature || ElevatedGas || ElevatedCO || ElevatedHumidity
+          ? "yellow"
+          : "green";
 
   // Update renderStatusLabels to include flame detection
   const renderStatusLabels = () => {
@@ -102,7 +102,7 @@ const RoomTile = ({
       labels.push(
         <div className="status-label danger" key="flame">
           Flame Detected!
-        </div>
+        </div>,
       );
     }
 
@@ -110,13 +110,13 @@ const RoomTile = ({
       labels.push(
         <div className="status-label danger" key="high-temp">
           High Temperature: {temperature}°C
-        </div>
+        </div>,
       );
     } else if (temperature > TEMP_NORMAL_MAX) {
       labels.push(
         <div className="status-label warning" key="elevated-temp">
           Elevated Temperature: {temperature}°C
-        </div>
+        </div>,
       );
     }
 
@@ -124,13 +124,13 @@ const RoomTile = ({
       labels.push(
         <div className="status-label danger" key="gas">
           High Gas Level: {mq2} ppm
-        </div>
+        </div>,
       );
     } else if (mq2 > MQ2_GAS_NORMAL_MAX) {
       labels.push(
         <div className="status-label warning" key="gas">
           Elevated Gas Level: {mq2} ppm
-        </div>
+        </div>,
       );
     }
 
@@ -138,13 +138,13 @@ const RoomTile = ({
       labels.push(
         <div className="status-label danger" key="co">
           High CO Level: {mq7} ppm
-        </div>
+        </div>,
       );
     } else if (mq7 > MQ7_CO_NORMAL_MAX) {
       labels.push(
         <div className="status-label warning" key="co">
           Elevated CO Level: {mq7} ppm
-        </div>
+        </div>,
       );
     }
 
@@ -152,13 +152,13 @@ const RoomTile = ({
       labels.push(
         <div className="status-label danger" key="humidity">
           High Humidity: {humidity}%
-        </div>
+        </div>,
       );
     } else if (humidity > HUMIDITY_NORMAL_MAX) {
       labels.push(
         <div className="status-label warning" key="humidity">
           Elevated Humidity: {humidity}%
-        </div>
+        </div>,
       );
     }
 
@@ -166,7 +166,7 @@ const RoomTile = ({
       labels.push(
         <div className="status-label normal" key="normal">
           Normal Condition
-        </div>
+        </div>,
       );
     }
 
