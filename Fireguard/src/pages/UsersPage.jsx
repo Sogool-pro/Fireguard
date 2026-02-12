@@ -363,7 +363,7 @@ export default function UsersPage() {
       {/* Edit modal */}
       {editingUser && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]"
+          className="fixed inset-0 bg-transparent flex items-center justify-center z-[9999]"
           onClick={() => setEditingUser(null)}
         >
           <div
@@ -506,7 +506,7 @@ export default function UsersPage() {
       {/* Add User Modal */}
       {addUserModal && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-transparent"
           role="dialog"
           aria-modal="true"
           onClick={() => setAddUserModal(false)}
@@ -720,7 +720,7 @@ export default function UsersPage() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm.open && deleteConfirm.user && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-transparent"
           role="dialog"
           aria-modal="true"
           onClick={() => setDeleteConfirm({ open: false, user: null })}

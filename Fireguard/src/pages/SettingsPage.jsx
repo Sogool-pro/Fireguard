@@ -650,7 +650,7 @@ export default function SettingsPage() {
           {/* Phone Number Modal */}
           {phoneModal.open && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-transparent"
               role="dialog"
               aria-modal="true"
               aria-labelledby="phone-modal-title"
@@ -724,7 +724,7 @@ export default function SettingsPage() {
           {/* Confirmation Modal */}
           {confirm.open && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-transparent"
               role="dialog"
               aria-modal="true"
               aria-labelledby="confirm-title"
