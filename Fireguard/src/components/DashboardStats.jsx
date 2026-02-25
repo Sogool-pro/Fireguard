@@ -20,10 +20,16 @@ const stats = [
   },
 ];
 
-export default function DashboardStats({ totalRooms, alertsToday }) {
+export default function DashboardStats({
+  totalRooms,
+  alertsToday,
+  className = "",
+}) {
   const values = { totalRooms, alertsToday };
   return (
-    <div className=" bg-white shadow-sm rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div
+      className={`bg-white shadow-sm rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}
+    >
       {stats.map((stat) => (
         <div
           key={stat.key}

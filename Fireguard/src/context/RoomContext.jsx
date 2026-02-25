@@ -4,36 +4,11 @@ import React, {
   useState,
   useRef,
   useEffect,
-  useCallback,
 } from "react";
 import { db } from "../firebase";
 import { ref, onValue, update } from "firebase/database";
 import buzzer from "../public/buzzer.mp3";
 const RoomContext = createContext();
-
-function hasRoomAlarmSignal(room) {
-  const level = String(room?.alert_level || "").toLowerCase();
-  const message = String(room?.alert_message || "").toLowerCase();
-  const thresholdAlarm =
-    !!room?.fire ||
-    Number(room?.temperature) > 55 ||
-    Number(room?.smoke) > 600 ||
-    Number(room?.carbonMonoxide) > 70;
-  const levelAlarm = level === "warning" || level === "alert";
-  const messageAlarm =
-    !!message &&
-    !message.includes("normal") &&
-    !message.includes("no data") &&
-    (message.includes("alert") ||
-      message.includes("warning") ||
-      message.includes("flame") ||
-      message.includes("smoke") ||
-      message.includes("gas") ||
-      message.includes("co") ||
-      message.includes("temp"));
-
-  return thresholdAlarm || levelAlarm || messageAlarm;
-}
 
 export function useRoom() {
   return useContext(RoomContext);
@@ -83,8 +58,6 @@ export function RoomProvider({ children }) {
           alert_level: sensor.alert_level,
           alert_message: sensor.alert_message,
           silenced: sensorSilenced,
-          sensorSilenced,
-          localSilenced: false,
           lastUpdated: sensorTimestamp,
           isOffline: false,
           sensorTimestampString: sensor.timestamp,
@@ -95,9 +68,6 @@ export function RoomProvider({ children }) {
         // try to preserve any previous mapping from nodeId to custom names and offline state
         return roomsArr.map((r) => {
           const existing = prev.find((p) => p.nodeId === r.nodeId);
-          const existingLocalSilenced = existing ? !!existing.localSilenced : false;
-          const localSilenced = hasRoomAlarmSignal(r) ? existingLocalSilenced : false;
-          const effectiveSilenced = !!r.sensorSilenced || localSilenced;
 
           if (existing) {
             return {
@@ -106,20 +76,16 @@ export function RoomProvider({ children }) {
               customName: existing.customName,
               // IMPORTANT: Preserve the offline state set by the offline detection logic
               isOffline: existing.isOffline,
-              localSilenced,
-              silenced: effectiveSilenced,
               status: existing.isOffline
                 ? "Offline"
-                : effectiveSilenced
+                : r.silenced
                   ? "Silenced"
                   : "Active",
             };
           }
           return {
             ...r,
-            localSilenced,
-            silenced: effectiveSilenced,
-            status: effectiveSilenced ? "Silenced" : "Active",
+            status: r.silenced ? "Silenced" : "Active",
           };
         });
       });
@@ -255,45 +221,52 @@ export function RoomProvider({ children }) {
     setBuzzerOn(anyAlarm);
   }, [rooms]);
 
-  const toggleRoomSilence = useCallback((nodeId) => {
+  const toggleRoomSilence = (nodeId) => {
     if (!nodeId) return;
+
+    const targetRoom = rooms.find((room) => room.nodeId === nodeId);
+    if (!targetRoom) return;
+
+    const previousSilenced = !!targetRoom.silenced;
+    const nextSilenced = !previousSilenced;
 
     setRooms((current) =>
       current.map((room) => {
         if (room.nodeId !== nodeId) return room;
 
-        const hasActiveAlarm = hasRoomAlarmSignal(room);
-        if (!hasActiveAlarm) {
-          const effectiveSilenced = room.isOffline || !!room.sensorSilenced;
-          return {
-            ...room,
-            localSilenced: false,
-            silenced: effectiveSilenced,
-            status: room.isOffline
-              ? "Offline"
-              : effectiveSilenced
-                ? "Silenced"
-                : "Active",
-          };
-        }
-
-        const nextLocalSilenced = !room.localSilenced;
-        const effectiveSilenced =
-          room.isOffline || !!room.sensorSilenced || nextLocalSilenced;
-
         return {
           ...room,
-          localSilenced: nextLocalSilenced,
-          silenced: effectiveSilenced,
+          silenced: nextSilenced,
           status: room.isOffline
             ? "Offline"
-            : effectiveSilenced
+            : nextSilenced
               ? "Silenced"
               : "Active",
         };
       }),
     );
-  }, []);
+
+    update(ref(db, `sensor_data/${nodeId}`), { silenced: nextSilenced }).catch(
+      (err) => {
+        console.error("Failed to sync silence state to Firebase:", err);
+        setRooms((current) =>
+          current.map((room) =>
+            room.nodeId === nodeId
+              ? {
+                  ...room,
+                  silenced: previousSilenced,
+                  status: room.isOffline
+                    ? "Offline"
+                    : previousSilenced
+                      ? "Silenced"
+                      : "Active",
+                }
+              : room,
+          ),
+        );
+      },
+    );
+  };
 
   // Function to manually enable audio (called from header)
   const enableAudio = () => {

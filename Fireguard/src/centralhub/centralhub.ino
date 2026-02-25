@@ -63,6 +63,7 @@
 #define ROOM_NAME_SYNC_INTERVAL 300000
 #define PHONE_SYNC_INTERVAL 300000
 #define THRESHOLD_SYNC_INTERVAL 60000
+#define SILENCE_SYNC_INTERVAL 1000
 #define NODE_TIMEOUT 60000
 #define ALERT_QUEUE_MAX 60
 #define ALERT_FLUSH_INTERVAL 5000
@@ -118,6 +119,7 @@ int NUM_PHONE_NUMBERS = 0;
 // Dynamic thresholds
 Thresholds thresholds;
 unsigned long lastThresholdSync = 0;
+unsigned long lastSilenceSync = 0;
 
 bool signupOK = false;
 bool timeSynced = false;
@@ -222,6 +224,7 @@ void syncPhoneNumbersFromFirebase();
 bool isValidPhoneNumber(String phone);
 void sendZeroDataToFirebase(NodeData* nodeData);
 void syncThresholdsFromFirebase();
+void syncSilenceFromFirebase();
 NodeData* findOrCreateNode(String nodeID);
 int findNodeIndex(String nodeID);
 void initializeNode(NodeData* nodeData, String nodeID);
@@ -295,6 +298,40 @@ void syncThresholdsFromFirebase() {
   }
   
   lastThresholdSync = now;
+}
+
+void syncSilenceFromFirebase() {
+  if (!Firebase.ready() || !signupOK || numNodes == 0) return;
+
+  unsigned long now = millis();
+  if (now - lastSilenceSync < SILENCE_SYNC_INTERVAL && lastSilenceSync != 0) {
+    return;
+  }
+  lastSilenceSync = now;
+
+  for (int i = 0; i < numNodes; i++) {
+    String path = "sensor_data/" + nodes[i].nodeID + "/silenced";
+    if (!Firebase.RTDB.getBool(&fbdo, path.c_str())) {
+      continue;
+    }
+
+    bool remoteSilenced = fbdo.boolData();
+    if (nodeAlerts[i].buzzerSilenced == remoteSilenced) {
+      continue;
+    }
+
+    nodeAlerts[i].buzzerSilenced = remoteSilenced;
+
+    int ledPin = (i == 0) ? NODE1_LED_PIN : ((i == 1) ? NODE2_LED_PIN : -1);
+    if (ledPin >= 0) {
+      digitalWrite(ledPin, remoteSilenced ? LOW : HIGH);
+    }
+
+    Serial.println(
+      "Remote silence updated for " + getRoomDisplayName(&nodes[i]) + ": " +
+      String(remoteSilenced ? "Silenced" : "Active")
+    );
+  }
 }
 
 // ===================== PHONE NUMBER FUNCTIONS =====================
@@ -1739,6 +1776,7 @@ void loop() {
   syncRoomNamesFromFirebase();
   syncPhoneNumbersFromFirebase();
   syncThresholdsFromFirebase();
+  syncSilenceFromFirebase();
   flushQueuedAlerts();
   
   // Check for node timeouts

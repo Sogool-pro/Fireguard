@@ -37,10 +37,48 @@ export default function Dashboard() {
         const visibleRooms = rooms.filter((r) => !r.archived);
         return (
           <>
-            <DashboardStats
-              totalRooms={visibleRooms.length}
-              alertsToday={alertsToday}
-            />
+            <div className="mx-4 mb-4 flex flex-col xl:flex-row gap-4 xl:items-stretch">
+              <div className="flex-1 min-w-0">
+                <DashboardStats
+                  totalRooms={visibleRooms.length}
+                  alertsToday={alertsToday}
+                  className="mb-0 h-full xl:h-[88px]"
+                />
+              </div>
+              <section className="xl:w-[320px] shrink-0 h-full xl:h-[88px] bg-white border border-red-200 rounded-xl shadow-sm">
+                <div className="px-3 py-1.5 h-full flex flex-col gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-red-700 tracking-wide uppercase">
+                        Emergency Contact
+                      </p>
+                      <h2 className="text-xs font-bold text-gray-800 mt-0.5 truncate">
+                        Panabo City Fire Station
+                      </h2>
+                    </div>
+                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+                      Fire Response
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    <a
+                      href="tel:0848231773"
+                      className="flex flex-col rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] leading-3 text-red-800 hover:bg-red-100 transition-colors"
+                    >
+                      <span className="font-medium">Landline</span>
+                      <span className="font-bold">(084) 823 - 1773</span>
+                    </a>
+                    <a
+                      href="tel:09284587586"
+                      className="flex flex-col rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] leading-3 text-red-800 hover:bg-red-100 transition-colors"
+                    >
+                      <span className="font-medium">SMART</span>
+                      <span className="font-bold">0928-458-7586</span>
+                    </a>
+                  </div>
+                </div>
+              </section>
+            </div>
             <div className="flex flex-wrap justify-center gap-6 px-4 mb-24 md:mb-32">
               {visibleRooms.map((room, idx) => (
                 <div
