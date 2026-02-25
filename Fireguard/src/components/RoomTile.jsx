@@ -26,34 +26,13 @@ function getBlinkingClass({
 }
 
 export default function RoomTile(props) {
-  const { rooms, setRooms, setBuzzerOn } = useRoom();
+  const { toggleRoomSilence } = useRoom();
   const room = props;
   const { showRoomChart } = useRoomChartModal();
   const [timeUntilOffline, setTimeUntilOffline] = useState(60);
-  const [isAlarmSilenced, setIsAlarmSilenced] = useState(false);
+  const isAlarmSilenced = room.silenced === true;
 
   const blinkingClass = getBlinkingClass({ ...room, isAlarmSilenced });
-
-  // Control global buzzer based on any blinking tile
-  React.useEffect(() => {
-    if (room.isOffline) {
-      setBuzzerOn(false);
-      return;
-    }
-
-    if (blinkingClass) {
-      setBuzzerOn(true);
-    } else {
-      // Check if any other room is blinking (exclude this room by nodeId if present)
-      const anyBlinking = rooms.some((r) => {
-        if (r.nodeId && room.nodeId)
-          return getBlinkingClass({ ...r, isAlarmSilenced: false }) && r.nodeId !== room.nodeId;
-        return getBlinkingClass({ ...r, isAlarmSilenced: false }) && r.roomName !== room.roomName;
-      });
-      if (!anyBlinking) setBuzzerOn(false);
-    }
-    // eslint-disable-next-line
-  }, [blinkingClass, rooms, setBuzzerOn, room.isOffline]);
 
   // Calculate time until offline
   useEffect(() => {
@@ -71,7 +50,7 @@ export default function RoomTile(props) {
   }, [room.lastUpdated]);
 
   const handlePowerClick = () => {
-    setIsAlarmSilenced(!isAlarmSilenced);
+    toggleRoomSilence(room.nodeId);
   };
 
   return (

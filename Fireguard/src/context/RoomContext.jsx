@@ -4,11 +4,36 @@ import React, {
   useState,
   useRef,
   useEffect,
+  useCallback,
 } from "react";
 import { db } from "../firebase";
 import { ref, onValue, update } from "firebase/database";
 import buzzer from "../public/buzzer.mp3";
 const RoomContext = createContext();
+
+function hasRoomAlarmSignal(room) {
+  const level = String(room?.alert_level || "").toLowerCase();
+  const message = String(room?.alert_message || "").toLowerCase();
+  const thresholdAlarm =
+    !!room?.fire ||
+    Number(room?.temperature) > 55 ||
+    Number(room?.smoke) > 600 ||
+    Number(room?.carbonMonoxide) > 70;
+  const levelAlarm = level === "warning" || level === "alert";
+  const messageAlarm =
+    !!message &&
+    !message.includes("normal") &&
+    !message.includes("no data") &&
+    (message.includes("alert") ||
+      message.includes("warning") ||
+      message.includes("flame") ||
+      message.includes("smoke") ||
+      message.includes("gas") ||
+      message.includes("co") ||
+      message.includes("temp"));
+
+  return thresholdAlarm || levelAlarm || messageAlarm;
+}
 
 export function useRoom() {
   return useContext(RoomContext);
@@ -38,6 +63,8 @@ export function RoomProvider({ children }) {
           }
         }
 
+        const sensorSilenced = !!sensor.silenced;
+
         return {
           // include the node id so other parts (settings) can reference it
           nodeId: node,
@@ -52,13 +79,12 @@ export function RoomProvider({ children }) {
             sensor.flame === 1 ||
             (sensor.alert_level &&
               sensor.alert_level.toLowerCase() === "alert"),
-          status:
-            sensor.alert_active === false || sensor.silenced
-              ? "Silenced"
-              : "Active",
+          status: sensorSilenced ? "Silenced" : "Active",
           alert_level: sensor.alert_level,
           alert_message: sensor.alert_message,
-          silenced: sensor.silenced,
+          silenced: sensorSilenced,
+          sensorSilenced,
+          localSilenced: false,
           lastUpdated: sensorTimestamp,
           isOffline: false,
           sensorTimestampString: sensor.timestamp,
@@ -69,6 +95,10 @@ export function RoomProvider({ children }) {
         // try to preserve any previous mapping from nodeId to custom names and offline state
         return roomsArr.map((r) => {
           const existing = prev.find((p) => p.nodeId === r.nodeId);
+          const existingLocalSilenced = existing ? !!existing.localSilenced : false;
+          const localSilenced = hasRoomAlarmSignal(r) ? existingLocalSilenced : false;
+          const effectiveSilenced = !!r.sensorSilenced || localSilenced;
+
           if (existing) {
             return {
               ...r,
@@ -76,9 +106,21 @@ export function RoomProvider({ children }) {
               customName: existing.customName,
               // IMPORTANT: Preserve the offline state set by the offline detection logic
               isOffline: existing.isOffline,
+              localSilenced,
+              silenced: effectiveSilenced,
+              status: existing.isOffline
+                ? "Offline"
+                : effectiveSilenced
+                  ? "Silenced"
+                  : "Active",
             };
           }
-          return r;
+          return {
+            ...r,
+            localSilenced,
+            silenced: effectiveSilenced,
+            status: effectiveSilenced ? "Silenced" : "Active",
+          };
         });
       });
     });
@@ -126,7 +168,7 @@ export function RoomProvider({ children }) {
             return {
               ...room,
               isOffline: false,
-              status: room.status === "Offline" ? "Active" : room.status,
+              status: room.silenced ? "Silenced" : "Active",
             };
           }
 
@@ -194,18 +236,64 @@ export function RoomProvider({ children }) {
   // Check for alarms and set buzzer state
   useEffect(() => {
     const anyAlarm = rooms.some((room) => {
+      if (room.isOffline || room.silenced === true) return false;
+      const level = String(room.alert_level || "").toLowerCase();
+      const message = String(room.alert_message || "").toLowerCase();
       const thresholdAlarm =
         room.fire ||
         room.temperature > 55 ||
         room.smoke > 600 ||
         room.carbonMonoxide > 70;
-      const alertLevelAlarm =
-        room.alert_level && room.alert_level.toLowerCase() === "alert";
-      return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
+      const alertLevelAlarm = level === "alert";
+      const messageAlarm =
+        message.includes("alert") ||
+        message.includes("flame");
+
+      return thresholdAlarm || alertLevelAlarm || messageAlarm;
     });
 
     setBuzzerOn(anyAlarm);
   }, [rooms]);
+
+  const toggleRoomSilence = useCallback((nodeId) => {
+    if (!nodeId) return;
+
+    setRooms((current) =>
+      current.map((room) => {
+        if (room.nodeId !== nodeId) return room;
+
+        const hasActiveAlarm = hasRoomAlarmSignal(room);
+        if (!hasActiveAlarm) {
+          const effectiveSilenced = room.isOffline || !!room.sensorSilenced;
+          return {
+            ...room,
+            localSilenced: false,
+            silenced: effectiveSilenced,
+            status: room.isOffline
+              ? "Offline"
+              : effectiveSilenced
+                ? "Silenced"
+                : "Active",
+          };
+        }
+
+        const nextLocalSilenced = !room.localSilenced;
+        const effectiveSilenced =
+          room.isOffline || !!room.sensorSilenced || nextLocalSilenced;
+
+        return {
+          ...room,
+          localSilenced: nextLocalSilenced,
+          silenced: effectiveSilenced,
+          status: room.isOffline
+            ? "Offline"
+            : effectiveSilenced
+              ? "Silenced"
+              : "Active",
+        };
+      }),
+    );
+  }, []);
 
   // Function to manually enable audio (called from header)
   const enableAudio = () => {
@@ -235,6 +323,7 @@ export function RoomProvider({ children }) {
         audioEnabled,
         enableAudio,
         testBuzzer,
+        toggleRoomSilence,
       }}
     >
       <audio ref={audioRef} src={buzzer} preload="auto" />

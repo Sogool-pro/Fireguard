@@ -15,10 +15,8 @@ export default function Header() {
   const [recentAlerts, setRecentAlerts] = useState([]);
   const notifRef = useRef();
   const buzzerAudioRef = useRef(null);
-  // Determine if buzzer should play: any blinking tile (active alert) or an unread logs alert
-  const shouldBuzzerPlay =
-    logsAlert ||
-    rooms.some(
+  // Determine if buzzer should play: only active unsilenced room alarms
+  const shouldBuzzerPlay = rooms.some(
       (room) =>
         (room.fire ||
           room.temperature > 55 ||
