@@ -12,8 +12,8 @@
 
 // ===================== CONFIGURATION =====================
 // WiFi
-#define WIFI_SSID "Maria Clara Front Desk"
-#define WIFI_PASSWORD "mcrr@1992"
+#define WIFI_SSID "MC_ADMIN"
+#define WIFI_PASSWORD ""
 
 // OTA Configuration
 #define OTA_HOSTNAME "FireGuard-CentralHub"
@@ -64,6 +64,9 @@
 #define PHONE_SYNC_INTERVAL 300000
 #define THRESHOLD_SYNC_INTERVAL 60000
 #define NODE_TIMEOUT 60000
+#define ALERT_QUEUE_MAX 60
+#define ALERT_FLUSH_INTERVAL 5000
+#define ALERT_FLUSH_BATCH_SIZE 4
 
 // Display modes
 enum DisplayMode {
@@ -169,6 +172,25 @@ NodeAlert nodeAlerts[MAX_NODES];
 int numNodes = 0;  // Current number of active nodes
 int currentDisplayNodeIndex = 0;  // For cycling through nodes on LCD
 
+struct QueuedAlertRecord {
+  String nodeID;
+  String roomName;
+  String message;
+  String level;
+  float temperature = 0;
+  float humidity = 0;
+  float mq2Value = 0;
+  float mq7Value = 0;
+  int flameValue = 0;
+  String timestamp;
+};
+
+QueuedAlertRecord alertQueue[ALERT_QUEUE_MAX];
+int alertQueueHead = 0;
+int alertQueueTail = 0;
+int alertQueueCount = 0;
+unsigned long lastAlertFlushAttempt = 0;
+
 // ===================== FUNCTION DECLARATIONS =====================
 void syncNTPTime(bool forceSync = false);
 String getFormattedDateTime();
@@ -203,6 +225,10 @@ void syncThresholdsFromFirebase();
 NodeData* findOrCreateNode(String nodeID);
 int findNodeIndex(String nodeID);
 void initializeNode(NodeData* nodeData, String nodeID);
+bool isFirebaseOnline();
+bool sendAlertRecordToFirebase(const QueuedAlertRecord& record);
+void enqueueAlertRecord(const QueuedAlertRecord& record);
+void flushQueuedAlerts();
 
 // ===================== THRESHOLD SYNC FUNCTION =====================
 void syncThresholdsFromFirebase() {
@@ -516,6 +542,7 @@ void sendZeroDataToFirebase(NodeData* nodeData) {
 void setup() {
   Serial.begin(115200);
   while (!Serial);
+  randomSeed(micros());
 
   Wire.begin();
   lcd.begin(LCD_COLS, LCD_ROWS);
@@ -1282,6 +1309,80 @@ String getAlertLevelString(AlertLevel level) {
   }
 }
 
+bool isFirebaseOnline() {
+  return signupOK && WiFi.status() == WL_CONNECTED && Firebase.ready();
+}
+
+bool sendAlertRecordToFirebase(const QueuedAlertRecord& record) {
+  if (!isFirebaseOnline()) {
+    return false;
+  }
+
+  FirebaseJson json;
+  String path = "alerts/" + String(millis()) + "_" + String(random(1000, 9999));
+
+  json.set("node", record.nodeID);
+  json.set("room", record.roomName);
+  json.set("message", record.message);
+  json.set("level", record.level);
+  json.set("temperature", record.temperature);
+  json.set("humidity", record.humidity);
+  json.set("Gas_and_Smoke", record.mq2Value);
+  json.set("carbon_monoxide", record.mq7Value);
+  json.set("flame", record.flameValue);
+  json.set("timestamp", record.timestamp);
+
+  return Firebase.RTDB.setJSON(&fbdo, path.c_str(), &json);
+}
+
+void enqueueAlertRecord(const QueuedAlertRecord& record) {
+  if (alertQueueCount >= ALERT_QUEUE_MAX) {
+    alertQueueHead = (alertQueueHead + 1) % ALERT_QUEUE_MAX;
+    alertQueueCount--;
+    Serial.println("⚠ Alert queue full. Dropping oldest queued alert.");
+  }
+
+  alertQueue[alertQueueTail] = record;
+  alertQueueTail = (alertQueueTail + 1) % ALERT_QUEUE_MAX;
+  alertQueueCount++;
+
+  Serial.println("Queued alert. Pending queued alerts: " + String(alertQueueCount));
+}
+
+void flushQueuedAlerts() {
+  if (alertQueueCount == 0) {
+    return;
+  }
+
+  unsigned long now = millis();
+  if (now - lastAlertFlushAttempt < ALERT_FLUSH_INTERVAL) {
+    return;
+  }
+  lastAlertFlushAttempt = now;
+
+  if (!isFirebaseOnline()) {
+    return;
+  }
+
+  int flushed = 0;
+  while (alertQueueCount > 0 && flushed < ALERT_FLUSH_BATCH_SIZE) {
+    const QueuedAlertRecord& queued = alertQueue[alertQueueHead];
+
+    if (sendAlertRecordToFirebase(queued)) {
+      alertQueueHead = (alertQueueHead + 1) % ALERT_QUEUE_MAX;
+      alertQueueCount--;
+      flushed++;
+    } else {
+      Serial.println("✗ Failed to flush queued alert: " + fbdo.errorReason());
+      break;
+    }
+  }
+
+  if (flushed > 0) {
+    Serial.println("✓ Flushed " + String(flushed) + " queued alert(s). Remaining: " + String(alertQueueCount));
+  }
+}
+
 void handleAlerts() {
   unsigned long now = millis();
   bool anyAlert = false;
@@ -1524,27 +1625,32 @@ void evaluateAlertLevel(NodeData* nodeData, NodeAlert* nodeAlert) {
 }
 
 void sendAlertToFirebase(NodeData* nodeData, NodeAlert* nodeAlert) {
-  if (Firebase.ready() && signupOK) {
-    FirebaseJson json;
-    String path = "alerts/" + String(millis());
-    
-    json.set("node", nodeData->nodeID);
-    json.set("room", getRoomDisplayName(nodeData));
-    json.set("message", nodeData->alertMessage);
-    json.set("level", getAlertLevelString(nodeData->alertLevel));
-    json.set("temperature", nodeData->temperature);
-    json.set("humidity", nodeData->humidity);
-    json.set("Gas_and_Smoke", nodeData->mq2Value);
-    json.set("carbon_monoxide", nodeData->mq7Value);
-    json.set("flame", nodeData->flameValue);
-    json.set("timestamp", getFormattedDateTime());
-    
-    if (Firebase.RTDB.setJSON(&fbdo, path.c_str(), &json)) {
-      Serial.println("✓ Firebase alert logged: " + nodeData->alertMessage);
-    } else {
-      Serial.println("✗ Firebase alert error: " + fbdo.errorReason());
-    }
+  (void)nodeAlert;
+
+  QueuedAlertRecord record;
+  record.nodeID = nodeData->nodeID;
+  record.roomName = getRoomDisplayName(nodeData);
+  record.message = nodeData->alertMessage;
+  record.level = getAlertLevelString(nodeData->alertLevel);
+  record.temperature = nodeData->temperature;
+  record.humidity = nodeData->humidity;
+  record.mq2Value = nodeData->mq2Value;
+  record.mq7Value = nodeData->mq7Value;
+  record.flameValue = nodeData->flameValue;
+  record.timestamp = getFormattedDateTime();
+
+  if (sendAlertRecordToFirebase(record)) {
+    Serial.println("✓ Firebase alert logged: " + nodeData->alertMessage);
+    return;
   }
+
+  if (isFirebaseOnline()) {
+    Serial.println("✗ Firebase alert error: " + fbdo.errorReason());
+  } else {
+    Serial.println("⚠ Firebase offline. Queuing alert for retry.");
+  }
+
+  enqueueAlertRecord(record);
 }
 
 void sendSMSAlert(NodeData* nodeData, NodeAlert* nodeAlert) {
@@ -1633,6 +1739,7 @@ void loop() {
   syncRoomNamesFromFirebase();
   syncPhoneNumbersFromFirebase();
   syncThresholdsFromFirebase();
+  flushQueuedAlerts();
   
   // Check for node timeouts
   checkNodeTimeout();
