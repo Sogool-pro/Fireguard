@@ -313,18 +313,20 @@ export default function LogsPage() {
               {isOnline ? "Online" : "Offline"}
             </span>
             {queuedCount > 0 ? (
-              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                {queuedCount} pending sync
-              </span>
+              <>
+                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                  {queuedCount} pending sync
+                </span>
+                <button
+                  type="button"
+                  onClick={syncQueuedManualLogs}
+                  disabled={!isOnline}
+                  className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                >
+                  Sync Pending
+                </button>
+              </>
             ) : null}
-            <button
-              type="button"
-              onClick={syncQueuedManualLogs}
-              disabled={queuedCount === 0}
-              className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
-            >
-              Sync Pending
-            </button>
             <button
               type="button"
               onClick={() => setShowManualForm((v) => !v)}
