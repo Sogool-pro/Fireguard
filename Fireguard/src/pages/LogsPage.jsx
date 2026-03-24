@@ -7,6 +7,11 @@ import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
 const MANUAL_LOG_QUEUE_KEY = "fireguard_manual_log_queue_v1";
+const REPORT_CHANNEL_LABELS = {
+  central_hub_sms: "Central Hub SMS",
+  central_hub_call: "Central Hub Call",
+  manual_observation: "Manual Observation",
+};
 
 function getDefaultDateTimeLocal() {
   const now = new Date();
@@ -55,6 +60,23 @@ function loadQueuedManualLogs() {
 function saveQueuedManualLogs(queueItems) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(MANUAL_LOG_QUEUE_KEY, JSON.stringify(queueItems));
+}
+
+function formatReportChannel(channel) {
+  return REPORT_CHANNEL_LABELS[channel] || "Manual Entry";
+}
+
+function formatReportedBy(alert) {
+  const name = String(alert?.reported_by_name || "").trim();
+  const email = String(alert?.reported_by_email || "").trim();
+  const fallback = String(alert?.reported_by || "").trim();
+
+  if (name && email && name !== email) return `${name} (${email})`;
+  if (name) return name;
+  if (email) return email;
+  if (fallback) return fallback;
+
+  return alert?.manualEntry ? "Unknown User" : "Central Hub";
 }
 
 const initialManualForm = {
@@ -106,6 +128,14 @@ export default function LogsPage() {
             date: alert && alert.timestamp ? alert.timestamp : "-",
             room: customRoomName,
             alert: alert && alert.message ? alert.message : "-",
+            entryType: alert?.manualEntry
+              ? `Manual (${formatReportChannel(alert.report_channel)})`
+              : "Automatic",
+            reportedBy: formatReportedBy(alert),
+            notes:
+              alert && alert.report_notes
+                ? String(alert.report_notes).trim()
+                : "-",
             temperature:
               alert &&
               alert.temperature !== undefined &&
@@ -261,7 +291,9 @@ export default function LogsPage() {
       manualEntry: true,
       report_channel: manualForm.reportChannel,
       report_notes: manualForm.notes.trim() || null,
-      reported_by: user?.email || "unknown",
+      reported_by: user?.displayName || user?.email || "unknown",
+      reported_by_name: user?.displayName || null,
+      reported_by_email: user?.email || null,
     };
 
     setIsSubmitting(true);

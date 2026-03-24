@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import { db } from "../firebase";
 
 // Helper to format date as 'MAR 5 2025 9:00 pm'
 function formatLogDate(dateStr) {
@@ -44,6 +43,9 @@ export default function LogsTable({ logs }) {
     flame: "",
     smoke: "",
     carbonMonoxide: "",
+    entryType: "",
+    reportedBy: "",
+    notes: "",
   });
 
   // Pagination state
@@ -57,21 +59,32 @@ export default function LogsTable({ logs }) {
 
   const filteredLogs = logs.filter((log) =>
     Object.keys(filters).every((key) =>
-      (log[key] || "").toLowerCase().includes(filters[key].toLowerCase())
-    )
+      (log[key] || "").toLowerCase().includes(filters[key].toLowerCase()),
+    ),
   );
 
   // Pagination logic
   const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
   const paginatedLogs = filteredLogs.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   // Excel Export
   const handleExportExcel = () => {
-    // export logs without 'acknowledged' field
-    const exportLogs = filteredLogs.map(({ acknowledged, ...rest }) => rest);
+    const exportLogs = filteredLogs.map((log) => ({
+      Date: log.date,
+      Room: log.room,
+      Alarm: log.alert,
+      Temperature: log.temperature,
+      Humidity: log.humidity,
+      "Flame Sensor": log.flame,
+      "Smoke Level": log.smoke,
+      "CO Level": log.carbonMonoxide,
+      "Entry Type": log.entryType,
+      "Recorded By": log.reportedBy,
+      Notes: log.notes,
+    }));
     const worksheet = XLSX.utils.json_to_sheet(exportLogs);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
@@ -93,6 +106,9 @@ export default function LogsTable({ logs }) {
           "Flame Sensor",
           "Smoke Level",
           "CO Level",
+          "Entry Type",
+          "Recorded By",
+          "Notes",
         ],
       ],
       body: filteredLogs.map((log) => [
@@ -104,6 +120,9 @@ export default function LogsTable({ logs }) {
         log.flame,
         log.smoke,
         log.carbonMonoxide,
+        log.entryType,
+        log.reportedBy,
+        log.notes,
       ]),
       startY: 18,
       styles: { fontSize: 8 },
@@ -154,6 +173,15 @@ export default function LogsTable({ logs }) {
               <th className="px-4 py-3 text-left font-semibold text-gray-700">
                 CO Level
               </th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                Entry Type
+              </th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                Recorded By
+              </th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                Notes
+              </th>
               {/* Acknowledge column removed */}
             </tr>
             <tr className="bg-gray-50">
@@ -184,12 +212,17 @@ export default function LogsTable({ logs }) {
                 <td className="px-4 py-3">{log.flame}</td>
                 <td className="px-4 py-3">{log.smoke}</td>
                 <td className="px-4 py-3">{log.carbonMonoxide}</td>
+                <td className="px-4 py-3">{log.entryType}</td>
+                <td className="px-4 py-3">{log.reportedBy}</td>
+                <td className="px-4 py-3 max-w-xs whitespace-normal break-words text-gray-600">
+                  {log.notes}
+                </td>
                 {/* Acknowledge column removed */}
               </tr>
             ))}
             {paginatedLogs.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-center py-6 text-gray-400">
+                <td colSpan={11} className="text-center py-6 text-gray-400">
                   No logs found.
                 </td>
               </tr>
@@ -206,7 +239,7 @@ export default function LogsTable({ logs }) {
               ? "Showing 0 records"
               : `Showing ${(page - 1) * rowsPerPage + 1}-${Math.min(
                   page * rowsPerPage,
-                  filteredLogs.length
+                  filteredLogs.length,
                 )} of ${filteredLogs.length} records`}
           </span>
           <button
