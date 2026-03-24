@@ -47,7 +47,10 @@ export default function LoginPage() {
       if (userDoc.exists() && userDoc.data().needsPasswordChange) {
         // Store temporary password in sessionStorage for the settings page
         sessionStorage.setItem("tempPassword", password);
-        showToast("Login successful! Redirecting to settings to set your password...", "success");
+        showToast(
+          "Login successful! Redirecting to settings to set your password...",
+          "success",
+        );
         navigate("/settings");
       } else {
         showToast("Login successful!", "success");

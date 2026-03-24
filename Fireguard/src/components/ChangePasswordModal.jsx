@@ -120,14 +120,17 @@ export default function ChangePasswordModal({
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${isRequired ? 'bg-black/50' : 'bg-transparent'} backdrop-blur-sm flex items-center justify-center z-50`}>
+    <div
+      className={`fixed inset-0 ${isRequired ? "bg-black/50" : "bg-transparent"} backdrop-blur-sm flex items-center justify-center z-50`}
+    >
       <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {isRequired ? "Set Your Password" : "Change Password"}
         </h2>
         {isRequired && (
           <p className="text-sm text-gray-600 mb-6">
-            Please create a new password to secure your account. This temporary password cannot be reused.
+            Please create a new password to secure your account. This temporary
+            password cannot be reused.
           </p>
         )}
 
@@ -232,7 +235,7 @@ export default function ChangePasswordModal({
             <button
               type="submit"
               disabled={loading}
-              className={`${isRequired ? 'w-full' : 'flex-1'} px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50`}
+              className={`${isRequired ? "w-full" : "flex-1"} px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50`}
             >
               {loading ? "Changing..." : "Change Password"}
             </button>

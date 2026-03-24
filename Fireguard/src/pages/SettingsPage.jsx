@@ -39,7 +39,8 @@ export default function SettingsPage() {
   });
   const [processing, setProcessing] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
+  const [isPasswordChangeRequired, setIsPasswordChangeRequired] =
+    useState(false);
   const [tempPasswordFromLogin, setTempPasswordFromLogin] = useState("");
 
   // Phone numbers state
@@ -64,7 +65,7 @@ export default function SettingsPage() {
           setDisplayName(
             userDoc.data().displayName || auth.currentUser.displayName || "",
           );
-          
+
           // Check if user needs to change password (temporary password setup)
           if (userDoc.data().needsPasswordChange) {
             // Retrieve the temporary password from sessionStorage
