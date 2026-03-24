@@ -39,6 +39,8 @@ export default function SettingsPage() {
   });
   const [processing, setProcessing] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
+  const [tempPasswordFromLogin, setTempPasswordFromLogin] = useState("");
 
   // Phone numbers state
   const [phoneNumbers, setPhoneNumbers] = useState([]);
@@ -62,6 +64,17 @@ export default function SettingsPage() {
           setDisplayName(
             userDoc.data().displayName || auth.currentUser.displayName || "",
           );
+          
+          // Check if user needs to change password (temporary password setup)
+          if (userDoc.data().needsPasswordChange) {
+            // Retrieve the temporary password from sessionStorage
+            const storedTempPassword = sessionStorage.getItem("tempPassword");
+            if (storedTempPassword) {
+              setTempPasswordFromLogin(storedTempPassword);
+            }
+            setIsPasswordChangeRequired(true);
+            setShowChangePasswordModal(true);
+          }
         }
       }
     };
@@ -811,10 +824,22 @@ export default function SettingsPage() {
       {/* Change Password Modal */}
       <ChangePasswordModal
         isOpen={showChangePasswordModal}
-        onClose={() => setShowChangePasswordModal(false)}
-        onSuccess={() => {
-          // Optional: Show success message or perform any post-password-change actions
+        onClose={() => {
+          if (!isPasswordChangeRequired) {
+            setShowChangePasswordModal(false);
+          }
         }}
+        onSuccess={() => {
+          // After successful password change, close modal and optionally redirect
+          if (isPasswordChangeRequired) {
+            setShowChangePasswordModal(false);
+            setIsPasswordChangeRequired(false);
+            // Clear the temporary password from sessionStorage
+            sessionStorage.removeItem("tempPassword");
+          }
+        }}
+        isRequired={isPasswordChangeRequired}
+        currentPassword={tempPasswordFromLogin}
       />
     </div>
   );

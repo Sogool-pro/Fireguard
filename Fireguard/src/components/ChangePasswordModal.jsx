@@ -1,14 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import { auth } from "../firebase";
+import { auth, firestore } from "../firebase";
 import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "../context/ToastContext";
 
-export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
+export default function ChangePasswordModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  isRequired = false,
+  currentPassword: initialCurrentPassword = "",
+}) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -18,6 +25,12 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (isRequired && initialCurrentPassword) {
+      setCurrentPassword(initialCurrentPassword);
+    }
+  }, [isRequired, initialCurrentPassword, isOpen]);
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -58,12 +71,19 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
       // Update password
       await updatePassword(user, newPassword);
 
+      // Update Firestore to mark that password change is no longer needed
+      await updateDoc(doc(firestore, "users", user.uid), {
+        needsPasswordChange: false,
+      });
+
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       showToast("Password changed successfully!", "success");
       if (onSuccess) onSuccess();
-      onClose();
+      if (!isRequired) {
+        onClose();
+      }
     } catch (err) {
       console.error(err);
 
@@ -100,11 +120,16 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-50">
+    <div className={`fixed inset-0 ${isRequired ? 'bg-black/50' : 'bg-transparent'} backdrop-blur-sm flex items-center justify-center z-50`}>
       <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Change Password
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {isRequired ? "Set Your Password" : "Change Password"}
         </h2>
+        {isRequired && (
+          <p className="text-sm text-gray-600 mb-6">
+            Please create a new password to secure your account. This temporary password cannot be reused.
+          </p>
+        )}
 
         <form onSubmit={handleChangePassword} className="space-y-4">
           {error && (
@@ -122,13 +147,15 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
                 type={showCurrentPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                disabled={isRequired}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100 disabled:opacity-75"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                disabled={isRequired}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
               >
                 {showCurrentPassword ? (
                   <AiOutlineEyeInvisible size={20} />
@@ -192,18 +219,20 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           <div className="flex gap-3 pt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
+            {!isRequired && (
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+              className={`${isRequired ? 'w-full' : 'flex-1'} px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50`}
             >
               {loading ? "Changing..." : "Change Password"}
             </button>

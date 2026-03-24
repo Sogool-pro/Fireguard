@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { auth, firestore } from "../firebase";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -43,8 +43,16 @@ export default function LoginPage() {
         return;
       }
 
-      showToast("Login successful!", "success");
-      navigate("/"); // Redirect to dashboard
+      // Check if user needs to change password (temporary password setup)
+      if (userDoc.exists() && userDoc.data().needsPasswordChange) {
+        // Store temporary password in sessionStorage for the settings page
+        sessionStorage.setItem("tempPassword", password);
+        showToast("Login successful! Redirecting to settings to set your password...", "success");
+        navigate("/settings");
+      } else {
+        showToast("Login successful!", "success");
+        navigate("/"); // Redirect to dashboard
+      }
     } catch (error) {
       let errorMessage = "";
 
