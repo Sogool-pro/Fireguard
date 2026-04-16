@@ -109,6 +109,7 @@ export default function Header() {
     "/analytics": "Reports",
     "/users": "Users",
     "/settings": "Settings",
+    "/profile": "Settings",
   };
   const pageTitle = pageTitles[location.pathname] || "Fireguard";
 
@@ -318,8 +319,16 @@ export default function Header() {
 
           {/* Profile */}
           <button className="flex items-center gap-2 p-2 rounded-lg ">
-            <div className="w-8 h-8  rounded-full bg-green-500 flex items-center justify-center border border-white/30">
-              <User size={20} className="text-white" />
+            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border border-white/30 overflow-hidden">
+              {authUser?.photoURL ? (
+                <img
+                  src={authUser.photoURL}
+                  alt={authUser.displayName || authUser.email || "User"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User size={20} className="text-white" />
+              )}
             </div>
             <span className="text-sm font-medium text-white">
               {authLoading

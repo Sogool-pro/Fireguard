@@ -1,6 +1,12 @@
-import React, { useState, createContext, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  createContext,
+  useContext,
+} from "react";
 import { useAuth } from "../context/AuthContext";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   PanelLeftOpen,
   PanelLeftClose,
@@ -11,6 +17,7 @@ import {
   UserCircle2,
   Settings,
   User,
+  LogOut,
 } from "lucide-react";
 import FireguardImg from "../assets/fireguard-logo.png";
 import { useNotification } from "../context/NotificationContext";
@@ -21,6 +28,7 @@ const SidebarContext = createContext();
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
   const { dashboardAlert, logsAlert } = useNotification();
   const { user, role, loading } = useAuth();
 
@@ -70,6 +78,32 @@ export default function Sidebar() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const { signOut } = useAuth();
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
+
+  const displayLabel = user?.displayName || user?.email?.split("@")[0] || "User";
+  const initials = (() => {
+    const name = displayLabel.trim();
+    if (!name) return "U";
+    const parts = name.split(" ").filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  })();
 
   return (
     <>
@@ -146,71 +180,86 @@ export default function Sidebar() {
             </ul>
           </SidebarContext.Provider>
 
-          <div className="flex p-3 relative z-10">
-            <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0">
-              {user?.displayName || user?.email ? (
-                <span className="text-white text-xs font-semibold">
-                  {(() => {
-                    const name =
-                      user?.displayName || user?.email?.split("@")[0] || "U";
-                    if (name.length <= 2) return name.toUpperCase().slice(0, 2);
-                    const parts = name.trim().split(" ");
-                    if (parts.length === 1)
-                      return parts[0].slice(0, 2).toUpperCase();
-                    return (
-                      parts[0][0] + parts[parts.length - 1][0]
-                    ).toUpperCase();
-                  })()}
-                </span>
-              ) : (
-                <User size={14} className="text-white" />
-              )}
-            </div>
-            <div
-              className={`flex justify-between items-center overflow-hidden transition-all duration-300 ease-in-out ${
-                expanded ? "w-52 ml-3 opacity-100" : "w-0 opacity-0"
-              }`}
-            >
-              <div className="leading-4 flex-1 min-w-0">
-                <h4 className="font-semibold text-white truncate">
-                  {user?.displayName || user?.email?.split("@")[0] || "User"}
-                </h4>
-                <span className="text-xs text-white/80 truncate block">
-                  {user?.email || ""}
-                </span>
-              </div>
-              <button
-                className="p-1 rounded-full hover:bg-white/20 text-white flex-shrink-0 ml-2"
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                <MoreVertical size={15} />
-              </button>
-            </div>
-            {/* Popup menu */}
-            {menuOpen && (
-              <div className="absolute bottom-12 right-0 w-50 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-2 flex flex-col">
+          <div
+            className="relative z-10 px-3 pb-4"
+            ref={menuRef}
+          >
+            {menuOpen && expanded && (
+              <div className="absolute bottom-[4.6rem] left-3 right-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.24)]">
                 <button
-                  className="flex items-center gap-2 px-4 py-1 text-gray-800 hover:bg-gray-100 rounded"
+                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-slate-800 transition-colors hover:bg-slate-50"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/profile");
+                  }}
+                >
+                  <User size={15} className="text-slate-400" />
+                  <span className="text-sm font-medium leading-none">
+                    Profile
+                  </span>
+                </button>
+                <div className="mx-4 h-px bg-slate-100" />
+                <button
+                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-red-600 transition-colors hover:bg-red-50"
                   onClick={() => {
                     setMenuOpen(false);
                     signOut();
                   }}
                 >
-                  {/* Logout icon */}
-                  <svg
-                    width="20"
-                    height="20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>Log out</span>
+                  <LogOut size={15} />
+                  <span className="text-sm font-medium leading-none">
+                    Log out
+                  </span>
                 </button>
               </div>
             )}
+
+            <div
+              className={`flex items-center gap-3 rounded-2xl border border-white/8 bg-white/8 px-3 py-3 backdrop-blur-sm transition-all duration-300 ease-in-out ${
+                expanded ? "justify-between" : "justify-center"
+              }`}
+            >
+              <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+                <div className="h-11 w-11 overflow-hidden rounded-xl border border-white/15 bg-white/15 flex items-center justify-center flex-shrink-0">
+                  {user?.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={displayLabel}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : user?.displayName || user?.email ? (
+                    <span className="text-sm font-semibold text-white">
+                      {initials}
+                    </span>
+                  ) : (
+                    <User size={16} className="text-white" />
+                  )}
+                </div>
+
+                <div
+                  className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
+                    expanded ? "w-40 opacity-100" : "w-0 opacity-0"
+                  }`}
+                >
+                  <h4 className="truncate text-sm font-semibold text-white">
+                    {displayLabel}
+                  </h4>
+                  <span className="block truncate text-xs text-slate-300">
+                    {user?.email || ""}
+                  </span>
+                </div>
+              </div>
+
+              {expanded && (
+                <button
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                  onClick={() => setMenuOpen((open) => !open)}
+                  aria-label="Open account menu"
+                >
+                  <MoreVertical size={16} />
+                </button>
+              )}
+            </div>
           </div>
         </nav>
       </aside>

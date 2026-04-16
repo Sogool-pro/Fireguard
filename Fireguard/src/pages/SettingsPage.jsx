@@ -3,18 +3,9 @@ import { useRoom } from "../context/RoomContext";
 import { auth, firestore } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
-import {
-  FaHome,
-  FaEdit,
-  FaArchive,
-  FaTrash,
-  FaPhone,
-  FaPlus,
-  FaLock,
-  FaUser,
-} from "react-icons/fa";
+import { FaHome, FaEdit, FaArchive, FaTrash, FaPhone, FaPlus } from "react-icons/fa";
 import { db } from "../firebase";
-import { ref, set, remove, onValue } from "firebase/database";
+import { ref, set, remove, onValue, get } from "firebase/database";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 
 export default function SettingsPage() {
@@ -371,308 +362,309 @@ export default function SettingsPage() {
     });
   };
 
+  const getRoomStatusMeta = (room) => {
+    if (room.archived) {
+      return {
+        label: "Archived",
+        tone: "bg-slate-100 text-slate-500",
+        dot: "bg-slate-400",
+        iconWrap: "bg-slate-100 text-slate-400",
+      };
+    }
+
+    const isOnline = room.status === "Active";
+    return {
+      label: isOnline ? "Online" : "Offline",
+      tone: isOnline
+        ? "bg-indigo-50 text-indigo-600"
+        : "bg-slate-100 text-slate-500",
+      dot: isOnline ? "bg-indigo-500" : "bg-slate-400",
+      iconWrap: isOnline
+        ? "bg-indigo-50 text-indigo-600"
+        : "bg-slate-100 text-slate-500",
+    };
+  };
+
+  const getPhoneBadge = (phone) => {
+    const value = `${phone.label} ${phone.number}`.toLowerCase();
+    if (value.includes("landline")) return "LANDLINE";
+    if (value.includes("smart")) return "SMART";
+    if (value.includes("admin") || value.includes("primary")) return "PRIMARY";
+    return "CONTACT";
+  };
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-start gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Settings</h1>
-        </div>
-      </div>
-
-      {/* Account Information Section - For all users */}
-      <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-          <FaUser className="text-blue-600" />
-          Account Information
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
-            </label>
-            {editingName ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={handleUpdateName}
-                  disabled={loadingName}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  {loadingName ? "Saving..." : "Save"}
-                </button>
-                <button
-                  onClick={() => setEditingName(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-800">
-                  {displayName || "Not set"}
-                </span>
-                <button
-                  onClick={() => setEditingName(true)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  Edit
-                </button>
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
-              {auth.currentUser?.email}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Account Security Section - For all users */}
-      <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-          <FaLock className="text-red-600" />
-          Account Security
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Manage your account password
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold uppercase tracking-tight text-slate-950">
+          Settings
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Manage room setup and emergency contacts.
         </p>
-        <button
-          onClick={() => setShowChangePasswordModal(true)}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          Change Password
-        </button>
       </div>
 
       {/* Admin Only Section - Room Management */}
       {userRole === "admin" && (
         <>
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Room Management</h3>
-            <p className="text-sm text-gray-500">
-              Configure and manage your monitored rooms
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {rooms.length === 0 && (
-              <p className="text-sm text-gray-500">No rooms found.</p>
-            )}
-            {rooms.map((r, idx) => (
-              <div
-                key={r.nodeId || idx}
-                className="bg-white rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center gap-4"
-              >
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                  <div className="w-14 h-14 bg-slate-900/10 rounded-lg flex items-center justify-center">
-                    <FaHome className="text-2xl md:text-3xl text-gray-800" />
+          <div className="grid gap-8 xl:grid-cols-2">
+            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+              <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800 text-white shadow-sm">
+                    <FaHome className="text-lg" />
                   </div>
-                  <div className="w-full">
-                    {/* Title area: show input in edit mode, otherwise plain title */}
-                    {editingMap[r.nodeId] ? (
-                      <input
-                        type="text"
-                        className="w-full text-lg md:text-xl font-semibold text-slate-900 uppercase border rounded px-3 py-2"
-                        value={edited[r.nodeId] ?? r.roomName}
-                        onChange={(e) =>
-                          setEdited((s) => ({
-                            ...s,
-                            [r.nodeId]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <div className="text-base md:text-lg font-semibold text-slate-900 uppercase">
-                        {r.roomName}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 mt-2">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          r.status === "Active" && !r.archived
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        {r.status === "Active" && !r.archived
-                          ? "Active"
-                          : r.archived
-                            ? "Archived"
-                            : r.status}
-                      </span>
-                      <div className="text-xs text-gray-500">
-                        Node ID:{" "}
-                        <span className="font-medium text-gray-700">
-                          {r.nodeId || "unknown"}
-                        </span>
+                  <div>
+                    <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                      Room Management
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Configure and manage your monitored rooms
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-4 sm:p-5">
+                {rooms.length === 0 && (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                    No rooms found.
+                  </div>
+                )}
+
+                {rooms.map((r, idx) => {
+                  const statusMeta = getRoomStatusMeta(r);
+
+                  return (
+                    <div
+                      key={r.nodeId || idx}
+                      className="rounded-[26px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[18px] ${statusMeta.iconWrap}`}
+                          >
+                            <FaHome className="text-xl" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            {editingMap[r.nodeId] ? (
+                              <input
+                                type="text"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base font-semibold uppercase tracking-tight text-slate-950 outline-none transition focus:border-slate-400 focus:bg-white"
+                                value={edited[r.nodeId] ?? r.roomName}
+                                onChange={(e) =>
+                                  setEdited((s) => ({
+                                    ...s,
+                                    [r.nodeId]: e.target.value,
+                                  }))
+                                }
+                              />
+                            ) : (
+                              <div className="truncate text-base font-semibold uppercase tracking-tight text-slate-950">
+                                {r.roomName}
+                              </div>
+                            )}
+
+                            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusMeta.tone}`}
+                              >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${statusMeta.dot}`}
+                                />
+                                {statusMeta.label}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                Node ID:{" "}
+                                <span className="font-medium text-slate-700">
+                                  {r.nodeId || "unknown"}
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {editingMap[r.nodeId] ? (
+                            <>
+                              <button
+                                className="rounded-xl bg-slate-950 px-3.5 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                                onClick={async () => {
+                                  await saveName(r.nodeId);
+                                  setEditingMap((s) => ({
+                                    ...s,
+                                    [r.nodeId]: false,
+                                  }));
+                                }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                                onClick={() => {
+                                  setEdited((s) => ({
+                                    ...s,
+                                    [r.nodeId]: r.roomName,
+                                  }));
+                                  setEditingMap((s) => ({
+                                    ...s,
+                                    [r.nodeId]: false,
+                                  }));
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                                onClick={() =>
+                                  setEditingMap((s) => ({
+                                    ...s,
+                                    [r.nodeId]: true,
+                                  }))
+                                }
+                                aria-label={`Edit ${r.roomName}`}
+                              >
+                                <FaEdit className="text-xs" />
+                              </button>
+                              <button
+                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                                onClick={() =>
+                                  showConfirm({
+                                    title: r.archived
+                                      ? "Unarchive room"
+                                      : "Archive room",
+                                    message: r.archived
+                                      ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
+                                      : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
+                                    onConfirm: () => toggleArchive(r.nodeId),
+                                  })
+                                }
+                                aria-label={`${r.archived ? "Unarchive" : "Archive"} ${r.roomName}`}
+                              >
+                                <FaArchive className="text-xs" />
+                              </button>
+                              <button
+                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-500 transition hover:bg-red-50"
+                                onClick={() =>
+                                  showConfirm({
+                                    title: "Remove room",
+                                    message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
+                                    onConfirm: removeRoom(r.nodeId),
+                                    showDeleteOption: true,
+                                  })
+                                }
+                                aria-label={`Delete ${r.roomName}`}
+                              >
+                                <FaTrash className="text-xs" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+              <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-white shadow-sm">
+                    <FaPhone className="text-lg" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                      Emergency Contacts
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Manage SMS notifications and emergency hotlines
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex-1"></div>
-
-                <div className="w-full md:w-auto flex items-center justify-end md:justify-start">
-                  <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    {editingMap[r.nodeId] ? (
-                      <>
-                        <button
-                          className="flex items-center gap-2 px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm cursor-pointer flex-shrink-0"
-                          onClick={async () => {
-                            await saveName(r.nodeId);
-                            setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
-                          }}
-                        >
-                          <FaEdit className="w-4 h-4 text-white" />
-                          Save
-                        </button>
-                        <button
-                          className="px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm cursor-pointer flex-shrink-0"
-                          onClick={() => {
-                            setEdited((s) => ({
-                              ...s,
-                              [r.nodeId]: r.roomName,
-                            }));
-                            setEditingMap((s) => ({ ...s, [r.nodeId]: false }));
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-50 transition-colors cursor-pointer flex-shrink-0"
-                          onClick={() =>
-                            setEditingMap((s) => ({ ...s, [r.nodeId]: true }))
-                          }
-                        >
-                          <FaEdit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button
-                          className="px-3 md:px-4 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
-                          onClick={() =>
-                            showConfirm({
-                              title: r.archived
-                                ? "Unarchive room"
-                                : "Archive room",
-                              message: r.archived
-                                ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
-                                : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
-                              onConfirm: () => toggleArchive(r.nodeId),
-                            })
-                          }
-                        >
-                          <FaArchive className="w-4 h-4 text-white" />
-                          {r.archived ? "Unarchive" : "Archive"}
-                        </button>
-                        <button
-                          className="px-3 md:px-4 py-2 bg-red-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-red-700 transition-colors cursor-pointer flex-shrink-0"
-                          onClick={() =>
-                            showConfirm({
-                              title: "Remove room",
-                              message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
-                              onConfirm: removeRoom(r.nodeId),
-                              showDeleteOption: true,
-                            })
-                          }
-                        >
-                          <FaTrash className="w-4 h-4 text-white" />
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Phone Numbers Section */}
-          <div className="mt-12 mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-medium">Phone Numbers</h3>
-                <p className="text-sm text-gray-500">
-                  Manage emergency and notification contacts
-                </p>
-              </div>
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
-                onClick={openAddPhoneModal}
-              >
-                <FaPlus className="w-4 h-4" />
-                Add Phone Number
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {phoneNumbers.length === 0 && (
-                <p className="text-sm text-gray-500">No phone numbers found.</p>
-              )}
-              {phoneNumbers.map((phone) => (
-                <div
-                  key={phone.id}
-                  className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-4"
+                <button
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
+                  onClick={openAddPhoneModal}
                 >
-                  <div className="flex items-center gap-4 w-full md:w-auto flex-1">
-                    <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <FaPhone className="text-2xl text-red-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-base font-semibold text-gray-900">
-                        {phone.label}
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {phone.number}
-                      </div>
-                    </div>
-                  </div>
+                  <FaPlus className="text-sm" />
+                  Add Number
+                </button>
+              </div>
 
-                  <div className="w-full md:w-auto flex items-center gap-3">
-                    <button
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => openEditPhoneModal(phone)}
-                    >
-                      <FaEdit className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
-                      onClick={() => deletePhoneNumber(phone.id)}
-                    >
-                      <FaTrash className="w-4 h-4" />
-                      Delete
-                    </button>
+              <div className="space-y-4 p-4 sm:p-5">
+                {phoneNumbers.length === 0 && (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                    No phone numbers found.
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+
+                {phoneNumbers.map((phone) => (
+                  <div
+                    key={phone.id}
+                    className="rounded-[26px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[18px] bg-red-50 text-red-500">
+                          <FaPhone className="text-base" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="truncate text-[15px] font-semibold tracking-tight text-slate-950">
+                              {phone.label}
+                            </div>
+                            <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-semibold tracking-[0.16em] text-slate-500">
+                              {getPhoneBadge(phone)}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-xs font-medium text-slate-600">
+                            {phone.number}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                          onClick={() => openEditPhoneModal(phone)}
+                          aria-label={`Edit ${phone.label}`}
+                        >
+                          <FaEdit className="text-xs" />
+                        </button>
+                        <button
+                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-500 transition hover:bg-red-50"
+                          onClick={() => deletePhoneNumber(phone.id)}
+                          aria-label={`Delete ${phone.label}`}
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
           {/* Phone Number Modal */}
           {phoneModal.open && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-transparent"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 backdrop-blur-sm"
               role="dialog"
               aria-modal="true"
               aria-labelledby="phone-modal-title"
             >
-              <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+              <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
                 <h3
                   id="phone-modal-title"
-                  className="text-lg font-semibold text-gray-900 mb-4"
+                  className="mb-4 text-xl font-black uppercase tracking-tight text-slate-950"
                 >
                   {phoneModal.mode === "add"
                     ? "Add Phone Number"
@@ -681,12 +673,12 @@ export default function SettingsPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-semibold text-slate-600">
                       Label
                     </label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-red-300 focus:bg-white"
                       placeholder="e.g., Emergency Contact"
                       value={phoneModal.label}
                       onChange={(e) =>
@@ -699,12 +691,12 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-semibold text-slate-600">
                       Phone Number
                     </label>
                     <input
                       type="tel"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-red-300 focus:bg-white"
                       placeholder="e.g., +639456789012"
                       value={phoneModal.number}
                       onChange={(e) =>
@@ -719,13 +711,13 @@ export default function SettingsPage() {
 
                 <div className="flex justify-end gap-3 mt-6">
                   <button
-                    className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="rounded-2xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                     onClick={closePhoneModal}
                   >
                     Cancel
                   </button>
                   <button
-                    className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors cursor-pointer"
+                    className="rounded-2xl bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
                     onClick={savePhoneNumber}
                   >
                     {phoneModal.mode === "add" ? "Add" : "Save"}
@@ -738,17 +730,17 @@ export default function SettingsPage() {
           {/* Confirmation Modal */}
           {confirm.open && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-transparent"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 backdrop-blur-sm"
               role="dialog"
               aria-modal="true"
               aria-labelledby="confirm-title"
             >
-              <div className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-6">
+              <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
                 {/* Icon + Title */}
                 <div className="flex items-start gap-4 mb-4">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      confirm.showDeleteOption ? "bg-red-100" : "bg-slate-700"
+                    className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${
+                      confirm.showDeleteOption ? "bg-red-100" : "bg-slate-900"
                     }`}
                   >
                     {confirm.showDeleteOption ? (
@@ -760,7 +752,7 @@ export default function SettingsPage() {
                   <div>
                     <h3
                       id="confirm-title"
-                      className="text-lg font-semibold text-gray-900"
+                      className="text-xl font-black uppercase tracking-tight text-slate-950"
                     >
                       {confirm.title}
                     </h3>
@@ -768,12 +760,14 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Message */}
-                <p className="text-sm text-gray-700 mb-6">{confirm.message}</p>
+                <p className="mb-6 text-sm leading-6 text-slate-600">
+                  {confirm.message}
+                </p>
 
                 {/* Delete Option Checkbox */}
                 {confirm.showDeleteOption && (
                   <div className="mb-6">
-                    <label className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <input
                         type="checkbox"
                         checked={confirm.deleteOption}
@@ -783,9 +777,9 @@ export default function SettingsPage() {
                             deleteOption: !prev.deleteOption,
                           }))
                         }
-                        className="w-5 h-5 accent-red-600 cursor-pointer"
+                        className="h-5 w-5 cursor-pointer accent-red-600"
                       />
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-slate-900">
                         Also delete sensor data and related alerts
                       </span>
                     </label>
@@ -795,7 +789,7 @@ export default function SettingsPage() {
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-3">
                   <button
-                    className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="rounded-2xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                     onClick={() =>
                       setConfirm({
                         open: false,
@@ -809,7 +803,7 @@ export default function SettingsPage() {
                     Cancel
                   </button>
                   <button
-                    className="px-6 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                    className="rounded-2xl bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
                     onClick={handleConfirm}
                     disabled={processing}
                   >

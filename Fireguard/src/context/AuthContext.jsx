@@ -19,7 +19,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let offRole = null;
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+      setUser(
+        u
+          ? {
+              uid: u.uid,
+              email: u.email || "",
+              displayName: u.displayName || "",
+              photoURL: u.photoURL || "",
+            }
+          : null,
+      );
       setRole(null);
       setIsDeleted(false);
       if (!u) {
@@ -38,6 +47,12 @@ export function AuthProvider({ children }) {
         (snap) => {
           const data = snap.exists() ? snap.data() : {};
           setRole(data.role || "user");
+          setUser({
+            uid: u.uid,
+            email: data.email || u.email || "",
+            displayName: data.displayName || u.displayName || "",
+            photoURL: data.photoURL || u.photoURL || "",
+          });
 
           // Check if user is marked as deleted
           if (data.isDeleted) {

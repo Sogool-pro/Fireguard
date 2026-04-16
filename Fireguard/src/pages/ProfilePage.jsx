@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth, firestore } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { FaUser, FaLock } from "react-icons/fa";
 import { useToast } from "../context/ToastContext";
@@ -44,9 +44,13 @@ export default function ProfilePage() {
       }
       // Update Firestore
       if (auth.currentUser) {
-        await updateDoc(doc(firestore, "users", auth.currentUser.uid), {
+        await setDoc(
+          doc(firestore, "users", auth.currentUser.uid),
+          {
           displayName: displayName,
-        });
+          },
+          { merge: true },
+        );
       }
       setEditingName(false);
       showToast("Name updated successfully!", "success");
@@ -59,92 +63,119 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <div className="flex items-start gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">My Profile</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage your account settings
-          </p>
-        </div>
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold uppercase tracking-tight text-slate-950">
+          Profile Settings
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Manage your account information and security preferences.
+        </p>
       </div>
 
-      {/* Account Information Section */}
-      <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-medium mb-6 flex items-center gap-2">
-          <FaUser className="text-blue-600" />
-          Account Information
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
-            </label>
-            {editingName ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={handleUpdateName}
-                  disabled={loadingName}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  {loadingName ? "Saving..." : "Save"}
-                </button>
-                <button
-                  onClick={() => setEditingName(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-800 font-medium">
-                  {displayName || "Not set"}
-                </span>
-                <button
-                  onClick={() => setEditingName(true)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  Edit
-                </button>
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
-            <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
-              {auth.currentUser?.email}
+      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+        <div className="grid gap-10 border-b border-slate-100 px-8 py-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-slate-400">
+              <FaUser className="text-sm" />
+              <span className="text-sm font-semibold uppercase tracking-[0.2em]">
+                Personal Info
+              </span>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Your email cannot be changed
+            <p className="max-w-sm text-sm leading-6 text-slate-500">
+              Update your name and contact details.
             </p>
           </div>
-        </div>
-      </div>
 
-      {/* Account Security Section */}
-      <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-          <FaLock className="text-red-600" />
-          Account Security
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Manage your account password and keep your account secure
-        </p>
-        <button
-          onClick={() => setShowChangePasswordModal(true)}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          Change Password
-        </button>
+          <div className="space-y-5">
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-600">
+                  Full Name
+                </label>
+                {editingName ? (
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-900">
+                    {displayName || "Not set"}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-600">
+                  Email Address
+                </label>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900">
+                  {auth.currentUser?.email}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {editingName ? (
+                <>
+                  <button
+                    onClick={handleUpdateName}
+                    disabled={loadingName}
+                    className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {loadingName ? "Saving..." : "Save Personal Info"}
+                  </button>
+                  <button
+                    onClick={() => setEditingName(false)}
+                    className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Edit Personal Info
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-10 px-8 py-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-slate-400">
+              <FaLock className="text-sm" />
+              <span className="text-sm font-semibold uppercase tracking-[0.2em]">
+                Security
+              </span>
+            </div>
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-800">
+              Make sure your password is strong and updated regularly.
+            </div>
+          </div>
+
+          <div className="flex flex-col items-start gap-4">
+            <div>
+              <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                Password
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Use the existing password flow to keep your account secure.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowChangePasswordModal(true)}
+              className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Change Password
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Change Password Modal */}
