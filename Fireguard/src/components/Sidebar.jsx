@@ -181,7 +181,9 @@ export default function Sidebar() {
           </SidebarContext.Provider>
 
           <div
-            className="relative z-10 px-3 pb-4"
+            className={`relative z-10 px-3 pb-4 ${
+              expanded ? "" : "flex justify-center"
+            }`}
             ref={menuRef}
           >
             {menuOpen && expanded && (
@@ -215,12 +217,18 @@ export default function Sidebar() {
             )}
 
             <div
-              className={`flex items-center gap-3 rounded-2xl border border-white/8 bg-white/8 px-3 py-3 backdrop-blur-sm transition-all duration-300 ease-in-out ${
-                expanded ? "justify-between" : "justify-center"
+              className={`flex items-center rounded-2xl border border-white/8 bg-white/8 backdrop-blur-sm transition-all duration-300 ease-in-out ${
+                expanded
+                  ? "w-full justify-between gap-3 px-3 py-3"
+                  : "h-14 w-14 justify-center p-0"
               }`}
             >
-              <div className="flex min-w-0 items-center gap-3 overflow-hidden">
-                <div className="h-11 w-11 overflow-hidden rounded-xl border border-white/15 bg-white/15 flex items-center justify-center flex-shrink-0">
+              <div
+                className={`flex items-center ${
+                  expanded ? "min-w-0 gap-3 overflow-hidden" : "justify-center"
+                }`}
+              >
+                <div className="flex h-11 w-11 min-w-[2.75rem] flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/15">
                   {user?.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -228,7 +236,7 @@ export default function Sidebar() {
                       className="h-full w-full object-cover"
                     />
                   ) : user?.displayName || user?.email ? (
-                    <span className="text-sm font-semibold text-white">
+                    <span className="block text-sm font-semibold leading-none text-white">
                       {initials}
                     </span>
                   ) : (
@@ -236,18 +244,16 @@ export default function Sidebar() {
                   )}
                 </div>
 
-                <div
-                  className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
-                    expanded ? "w-40 opacity-100" : "w-0 opacity-0"
-                  }`}
-                >
-                  <h4 className="truncate text-sm font-semibold text-white">
-                    {displayLabel}
-                  </h4>
-                  <span className="block truncate text-xs text-slate-300">
-                    {user?.email || ""}
-                  </span>
-                </div>
+                {expanded && (
+                  <div className="min-w-0 overflow-hidden transition-all duration-300 ease-in-out w-40 opacity-100">
+                    <h4 className="truncate text-sm font-semibold text-white">
+                      {displayLabel}
+                    </h4>
+                    <span className="block truncate text-xs text-slate-300">
+                      {user?.email || ""}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {expanded && (
