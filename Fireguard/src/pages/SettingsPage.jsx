@@ -1,19 +1,37 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRoom } from "../context/RoomContext";
 import { auth, firestore } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
-import { FaHome, FaEdit, FaArchive, FaTrash, FaPhone, FaPlus } from "react-icons/fa";
+import { doc, getDoc } from "firebase/firestore";
+import {
+  FaHome,
+  FaEdit,
+  FaArchive,
+  FaTrash,
+  FaPhone,
+  FaPlus,
+  FaDatabase,
+  FaDownload,
+  FaUpload,
+  FaExclamationTriangle,
+} from "react-icons/fa";
 import { db } from "../firebase";
 import { ref, set, remove, onValue, get } from "firebase/database";
 import ChangePasswordModal from "../components/ChangePasswordModal";
+import { useToast } from "../context/ToastContext";
+import {
+  createSystemBackup,
+  downloadBackupFile,
+  readBackupFile,
+  restoreSystemBackup,
+} from "../services/backupRestore";
 
 export default function SettingsPage() {
   const { rooms, setRooms } = useRoom();
+  const { showToast } = useToast();
+  const backupFileInputRef = useRef(null);
   const [userRole, setUserRole] = useState(null);
-  const [displayName, setDisplayName] = useState("");
-  const [editingName, setEditingName] = useState(false);
-  const [loadingName, setLoadingName] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
 
   // local edited names map
   const [edited, setEdited] = useState({});
@@ -53,9 +71,6 @@ export default function SettingsPage() {
         );
         if (userDoc.exists()) {
           setUserRole(userDoc.data().role);
-          setDisplayName(
-            userDoc.data().displayName || auth.currentUser.displayName || "",
-          );
 
           // Check if user needs to change password (temporary password setup)
           if (userDoc.data().needsPasswordChange) {
@@ -72,34 +87,6 @@ export default function SettingsPage() {
     };
     getUser();
   }, []);
-
-  // Handle update display name
-  const handleUpdateName = async () => {
-    if (!displayName.trim()) {
-      alert("Name cannot be empty");
-      return;
-    }
-    setLoadingName(true);
-    try {
-      // Update Firebase Auth
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName });
-      }
-      // Update Firestore
-      if (auth.currentUser) {
-        await updateDoc(doc(firestore, "users", auth.currentUser.uid), {
-          displayName: displayName,
-        });
-      }
-      setEditingName(false);
-      alert("Name updated successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update name: " + err.message);
-    } finally {
-      setLoadingName(false);
-    }
-  };
 
   useEffect(() => {
     const map = {};
@@ -240,20 +227,6 @@ export default function SettingsPage() {
     }
   };
 
-  const toggleRepair = async (nodeId) => {
-    const current = rooms.find((r) => r.nodeId === nodeId);
-    const next = !(current && current.onRepair);
-    try {
-      await set(ref(db, `room_meta/${nodeId}/onRepair`), next);
-      setRooms((prev) =>
-        prev.map((r) => (r.nodeId === nodeId ? { ...r, onRepair: next } : r)),
-      );
-    } catch (err) {
-      console.error("Failed to toggle repair status:", err);
-      alert("Failed to update repair status");
-    }
-  };
-
   // helper to open confirmation modal
   const showConfirm = ({ title, message, onConfirm, showDeleteOption }) => {
     setConfirm({
@@ -360,6 +333,77 @@ export default function SettingsPage() {
         }
       },
     });
+  };
+
+  const handleDownloadBackup = async () => {
+    try {
+      setBackupBusy(true);
+      const backup = await createSystemBackup(auth.currentUser);
+      downloadBackupFile(backup);
+      showToast(
+        `Backup downloaded (${backup.summary.realtimeRootKeys} data groups, ${backup.summary.users} users).`,
+        "success",
+      );
+    } catch (err) {
+      console.error("Failed to create backup:", err);
+      showToast(`Failed to create backup: ${err.message}`, "error");
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const handleRestoreBackup = async (backup) => {
+    try {
+      setRestoreBusy(true);
+      const summary = await restoreSystemBackup(backup);
+      const userMessage =
+        summary.users > 0
+          ? `${summary.users} user record${summary.users === 1 ? "" : "s"}`
+          : "Firestore users unchanged";
+
+      showToast(
+        `Backup restored (${summary.realtimeRootKeys} data groups, ${userMessage}).`,
+        "success",
+      );
+    } catch (err) {
+      console.error("Failed to restore backup:", err);
+      showToast(`Failed to restore backup: ${err.message}`, "error");
+    } finally {
+      setRestoreBusy(false);
+    }
+  };
+
+  const handleRestoreFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    try {
+      const backup = await readBackupFile(file);
+      const userMessage =
+        backup.summary.users > 0
+          ? `${backup.summary.users} Firestore user record${
+              backup.summary.users === 1 ? "" : "s"
+            }`
+          : "no Firestore user records";
+      const realtimeMessage = `${backup.summary.realtimeRootKeys} Realtime Database data group${
+        backup.summary.realtimeRootKeys === 1 ? "" : "s"
+      }`;
+
+      showConfirm({
+        title: "Restore backup",
+        message: `Restore ${file.name}? This will replace current Realtime Database data with ${realtimeMessage}. The file contains ${userMessage}.${
+          backup.summary.realtimeOnly
+            ? " Firestore users will be left unchanged because this is an RTDB-only export."
+            : " Firebase Auth accounts and passwords are not changed."
+        }`,
+        onConfirm: () => handleRestoreBackup(backup),
+      });
+    } catch (err) {
+      console.error("Failed to read backup file:", err);
+      showToast(`Failed to read backup file: ${err.message}`, "error");
+    }
   };
 
   const getRoomStatusMeta = (room) => {
@@ -652,6 +696,83 @@ export default function SettingsPage() {
               </div>
             </section>
           </div>
+
+          <section className="mt-8 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+            <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+                  <FaDatabase className="text-lg" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                    Backup & Restore
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Export or restore system database records.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
+              <div className="flex flex-col justify-between gap-5 p-6">
+                <div>
+                  <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-700">
+                    Download Backup
+                  </h4>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Includes Realtime Database data and Firestore user records.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadBackup}
+                  disabled={backupBusy || restoreBusy}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+                >
+                  <FaDownload className="text-sm" />
+                  {backupBusy ? "Preparing..." : "Download Backup"}
+                </button>
+              </div>
+
+              <div className="flex flex-col justify-between gap-5 p-6">
+                <input
+                  ref={backupFileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleRestoreFileChange}
+                />
+
+                <div>
+                  <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-700">
+                    Restore Backup
+                  </h4>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Imports a FireGuard JSON backup file.
+                  </p>
+                  <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                    <FaExclamationTriangle className="mt-1 flex-shrink-0" />
+                    <span>
+                      Restore replaces live database values. Firebase Auth
+                      accounts and passwords are not changed.
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => backupFileInputRef.current?.click()}
+                  disabled={backupBusy || restoreBusy}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+                >
+                  <FaUpload className="text-sm" />
+                  {restoreBusy ? "Restoring..." : "Choose Backup File"}
+                </button>
+              </div>
+            </div>
+          </section>
 
           {/* Phone Number Modal */}
           {phoneModal.open && (
