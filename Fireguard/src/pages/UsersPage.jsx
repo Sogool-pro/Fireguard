@@ -117,18 +117,13 @@ export default function UsersPage() {
   }, [users, q, roleFilter]);
 
   const totals = useMemo(() => {
-    const total = users.length;
-    const admins = users.filter((u) => (u.role || "user") === "admin").length;
+    const visibleUsers = users.filter((u) => !u.isDeleted);
+    const total = visibleUsers.length;
+    const admins = visibleUsers.filter(
+      (u) => (u.role || "user") === "admin",
+    ).length;
     const regular = total - admins;
-    const now = Date.now();
-    const active = users.filter((u) => {
-      const ts =
-        u.createdAt && u.createdAt.toDate
-          ? u.createdAt.toDate().getTime()
-          : null;
-      return ts && now - ts < 7 * 24 * 60 * 60 * 1000;
-    }).length;
-    return { total, admins, regular, active };
+    return { total, admins, regular };
   }, [users]);
 
   return (
@@ -203,7 +198,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-500">Total Users</div>
           <div className="text-2xl font-semibold">{totals.total}</div>
@@ -215,10 +210,6 @@ export default function UsersPage() {
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-500">Regular Users</div>
           <div className="text-2xl font-semibold">{totals.regular}</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Active Now</div>
-          <div className="text-2xl font-semibold">{totals.active}</div>
         </div>
       </div>
 
