@@ -3,6 +3,10 @@ import { useRoom } from "../context/RoomContext";
 import { auth, firestore } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from "firebase/auth";
+import {
   FaHome,
   FaEdit,
   FaArchive,
@@ -13,6 +17,7 @@ import {
   FaDownload,
   FaUpload,
   FaExclamationTriangle,
+  FaLock,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import { ref, set, remove, onValue, get } from "firebase/database";
@@ -32,6 +37,15 @@ export default function SettingsPage() {
   const [userRole, setUserRole] = useState(null);
   const [backupBusy, setBackupBusy] = useState(false);
   const [restoreBusy, setRestoreBusy] = useState(false);
+  const [passwordGate, setPasswordGate] = useState({
+    open: false,
+    title: "",
+    message: "",
+    password: "",
+    error: "",
+    submitting: false,
+    onVerified: null,
+  });
 
   // local edited names map
   const [edited, setEdited] = useState({});
@@ -335,7 +349,95 @@ export default function SettingsPage() {
     });
   };
 
-  const handleDownloadBackup = async () => {
+  const closePasswordGate = () => {
+    setPasswordGate({
+      open: false,
+      title: "",
+      message: "",
+      password: "",
+      error: "",
+      submitting: false,
+      onVerified: null,
+    });
+  };
+
+  const requestPasswordVerification = ({ title, message, onVerified }) => {
+    setPasswordGate({
+      open: true,
+      title,
+      message,
+      password: "",
+      error: "",
+      submitting: false,
+      onVerified,
+    });
+  };
+
+  const verifyCurrentPassword = async (password) => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error("You must be signed in to continue.");
+    }
+
+    if (!currentUser.email) {
+      throw new Error("This account does not support password verification.");
+    }
+
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
+  };
+
+  const getPasswordVerificationError = (err) => {
+    switch (err.code) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+        return "The password you entered is incorrect.";
+      case "auth/too-many-requests":
+        return "Too many failed attempts. Please wait a moment and try again.";
+      case "auth/network-request-failed":
+        return "Network error while verifying your password.";
+      default:
+        return err.message || "Failed to verify password.";
+    }
+  };
+
+  const handlePasswordGateSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!passwordGate.password.trim()) {
+      setPasswordGate((prev) => ({
+        ...prev,
+        error: "Enter your password to continue.",
+      }));
+      return;
+    }
+
+    try {
+      setPasswordGate((prev) => ({
+        ...prev,
+        error: "",
+        submitting: true,
+      }));
+
+      await verifyCurrentPassword(passwordGate.password);
+      const nextAction = passwordGate.onVerified;
+      closePasswordGate();
+
+      if (nextAction) {
+        await nextAction();
+      }
+    } catch (err) {
+      console.error("Password verification failed:", err);
+      setPasswordGate((prev) => ({
+        ...prev,
+        error: getPasswordVerificationError(err),
+        submitting: false,
+      }));
+    }
+  };
+
+  const executeDownloadBackup = async () => {
     try {
       setBackupBusy(true);
       const backup = await createSystemBackup(auth.currentUser);
@@ -352,7 +454,16 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRestoreBackup = async (backup) => {
+  const handleDownloadBackup = () => {
+    requestPasswordVerification({
+      title: "Download backup",
+      message:
+        "Enter your account password before exporting system backup data.",
+      onVerified: executeDownloadBackup,
+    });
+  };
+
+  const executeRestoreBackup = async (backup) => {
     try {
       setRestoreBusy(true);
       const summary = await restoreSystemBackup(backup);
@@ -371,6 +482,15 @@ export default function SettingsPage() {
     } finally {
       setRestoreBusy(false);
     }
+  };
+
+  const requestRestorePassword = (backup) => {
+    requestPasswordVerification({
+      title: "Restore backup",
+      message:
+        "Enter your account password before replacing live system data.",
+      onVerified: () => executeRestoreBackup(backup),
+    });
   };
 
   const handleRestoreFileChange = async (event) => {
@@ -398,7 +518,7 @@ export default function SettingsPage() {
             ? " Firestore users will be left unchanged because this is an RTDB-only export."
             : " Firebase Auth accounts and passwords are not changed."
         }`,
-        onConfirm: () => handleRestoreBackup(backup),
+        onConfirm: () => requestRestorePassword(backup),
       });
     } catch (err) {
       console.error("Failed to read backup file:", err);
@@ -932,6 +1052,79 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {passwordGate.open && (
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="password-gate-title"
+            >
+              <form
+                className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.24)]"
+                onSubmit={handlePasswordGateSubmit}
+              >
+                <div className="mb-5 flex items-start gap-4">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                    <FaLock className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3
+                      id="password-gate-title"
+                      className="text-xl font-black uppercase tracking-tight text-slate-950"
+                    >
+                      {passwordGate.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {passwordGate.message}
+                    </p>
+                  </div>
+                </div>
+
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  value={passwordGate.password}
+                  onChange={(event) =>
+                    setPasswordGate((prev) => ({
+                      ...prev,
+                      password: event.target.value,
+                      error: "",
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-400 focus:bg-white"
+                />
+
+                {passwordGate.error && (
+                  <p className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {passwordGate.error}
+                  </p>
+                )}
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                    onClick={closePasswordGate}
+                    disabled={passwordGate.submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+                    disabled={passwordGate.submitting}
+                  >
+                    {passwordGate.submitting ? "Verifying..." : "Verify"}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </>
