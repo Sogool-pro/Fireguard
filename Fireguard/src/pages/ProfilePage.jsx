@@ -11,6 +11,9 @@ export default function ProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [loadingName, setLoadingName] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [isPasswordChangeRequired, setIsPasswordChangeRequired] =
+    useState(false);
+  const [tempPasswordFromLogin, setTempPasswordFromLogin] = useState("");
   const { showToast } = useToast();
 
   // Load user data
@@ -21,9 +24,20 @@ export default function ProfilePage() {
           doc(firestore, "users", auth.currentUser.uid),
         );
         if (userDoc.exists()) {
+          const userData = userDoc.data();
+
           setDisplayName(
-            userDoc.data().displayName || auth.currentUser.displayName || "",
+            userData.displayName || auth.currentUser.displayName || "",
           );
+
+          if (userData.needsPasswordChange) {
+            const storedTempPassword = sessionStorage.getItem("tempPassword");
+            if (storedTempPassword) {
+              setTempPasswordFromLogin(storedTempPassword);
+            }
+            setIsPasswordChangeRequired(true);
+            setShowChangePasswordModal(true);
+          }
         }
       }
     };
@@ -47,7 +61,7 @@ export default function ProfilePage() {
         await setDoc(
           doc(firestore, "users", auth.currentUser.uid),
           {
-          displayName: displayName,
+            displayName: displayName,
           },
           { merge: true },
         );
@@ -181,10 +195,18 @@ export default function ProfilePage() {
       {/* Change Password Modal */}
       <ChangePasswordModal
         isOpen={showChangePasswordModal}
-        onClose={() => setShowChangePasswordModal(false)}
-        onSuccess={() => {
-          // Optional: Show success message
+        onClose={() => {
+          if (!isPasswordChangeRequired) {
+            setShowChangePasswordModal(false);
+          }
         }}
+        onSuccess={() => {
+          setShowChangePasswordModal(false);
+          setIsPasswordChangeRequired(false);
+          sessionStorage.removeItem("tempPassword");
+        }}
+        isRequired={isPasswordChangeRequired}
+        currentPassword={tempPasswordFromLogin}
       />
     </div>
   );

@@ -109,7 +109,7 @@ export default function Header() {
     "/analytics": "Reports",
     "/users": "Users",
     "/settings": "Settings",
-    "/profile": "Settings",
+    "/profile": "Profile",
   };
   const pageTitle = pageTitles[location.pathname] || "Fireguard";
 

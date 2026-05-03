@@ -67,13 +67,6 @@ export default function Sidebar() {
       active: location.pathname === "/settings",
       adminOnly: true,
     },
-    {
-      path: "/profile",
-      text: "Settings",
-      icon: <Settings size={20} />,
-      active: location.pathname === "/profile",
-      userOnly: true,
-    },
   ];
 
   const [menuOpen, setMenuOpen] = useState(false);

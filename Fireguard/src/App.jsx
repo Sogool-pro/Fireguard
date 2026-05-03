@@ -99,9 +99,11 @@ function App() {
                                     <Route
                                       path="/settings"
                                       element={
-                                        <Suspense fallback={<PageLoader />}>
-                                          <SettingsPage />
-                                        </Suspense>
+                                        <PrivateRoute allowedRoles={["admin"]}>
+                                          <Suspense fallback={<PageLoader />}>
+                                            <SettingsPage />
+                                          </Suspense>
+                                        </PrivateRoute>
                                       }
                                     />
                                     <Route

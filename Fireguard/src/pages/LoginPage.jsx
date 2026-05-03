@@ -45,13 +45,17 @@ export default function LoginPage() {
 
       // Check if user needs to change password (temporary password setup)
       if (userDoc.exists() && userDoc.data().needsPasswordChange) {
-        // Store temporary password in sessionStorage for the settings page
+        const userRole = userDoc.data().role || "user";
+        const passwordChangePath =
+          userRole === "admin" ? "/settings" : "/profile";
+
+        // Store temporary password in sessionStorage for the password modal
         sessionStorage.setItem("tempPassword", password);
         showToast(
-          "Login successful! Redirecting to settings to set your password...",
+          "Login successful! Redirecting to set your password...",
           "success",
         );
-        navigate("/settings");
+        navigate(passwordChangePath);
       } else {
         showToast("Login successful!", "success");
         navigate("/"); // Redirect to dashboard
