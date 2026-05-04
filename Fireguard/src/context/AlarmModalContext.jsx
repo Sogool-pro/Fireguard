@@ -54,7 +54,7 @@ export function AlarmModalProvider({ children }) {
         const alertMessage = room.alert_message || "";
         
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur">
+          <div className="fixed inset-0 z-[110000] flex items-center justify-center bg-white/30 backdrop-blur">
             <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
               {/* Header with icon and ALARM! text */}
               <div className="flex items-center gap-3 mb-4">

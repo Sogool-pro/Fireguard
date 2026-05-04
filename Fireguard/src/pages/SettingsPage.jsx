@@ -318,7 +318,14 @@ export default function SettingsPage() {
       await saveThresholds(parsedThresholds);
       setThresholdDirty(false);
       setThresholdForm(buildThresholdForm(parsedThresholds));
-      showToast("Sensor thresholds saved.", "success");
+      showToast(
+        {
+          title: "Thresholds saved",
+          description: "Sensor configuration updated successfully.",
+        },
+        "success",
+        { duration: 5000 },
+      );
     } catch (err) {
       console.error("Failed to save thresholds:", err);
       const message = err.message || "Failed to save sensor thresholds.";

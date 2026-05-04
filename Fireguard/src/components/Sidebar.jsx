@@ -1,8 +1,4 @@
-import React, {
-  useState,
-  createContext,
-  useContext,
-} from "react";
+import React, { useState, createContext, useContext } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -87,7 +83,8 @@ export default function Sidebar() {
     return true;
   });
 
-  const displayLabel = user?.displayName || user?.email?.split("@")[0] || "User";
+  const displayLabel =
+    user?.displayName || user?.email?.split("@")[0] || "User";
   const initials = (() => {
     const name = displayLabel.trim();
     if (!name) return "U";
@@ -183,7 +180,9 @@ export default function Sidebar() {
             >
               <div
                 className={`flex items-center ${
-                  expanded ? "min-w-0 gap-2.5 overflow-hidden" : "justify-center"
+                  expanded
+                    ? "min-w-0 gap-2.5 overflow-hidden"
+                    : "justify-center"
                 }`}
               >
                 <div className="flex h-8 w-8 min-w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#bf2d2d] text-white">
@@ -219,11 +218,14 @@ export default function Sidebar() {
 
             {expanded && (
               <button
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-xs font-semibold text-[#bf2d2d] transition-colors hover:bg-[#fee2e2]"
+                className="mt-2 flex w-full items-center rounded-lg px-2.5 py-2 text-detail font-medium text-[#bf2d2d] transition-colors hover:bg-[#fef2f2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fecaca]"
                 onClick={signOut}
+                aria-label="Logout"
               >
-                <LogOut size={14} />
-                Logout
+                <div className="flex min-w-[20px] items-center opacity-80">
+                  <LogOut size={20} />
+                </div>
+                <span className="ml-2.5">Logout</span>
               </button>
             )}
           </div>

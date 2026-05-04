@@ -12,14 +12,12 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -37,7 +35,6 @@ export default function LoginPage() {
       if (userDoc.exists() && userDoc.data().isDeleted) {
         // User is deleted, sign them out
         await signOut(auth);
-        setError("This account has been deleted and cannot be accessed.");
         showToast("Account deleted: This account has been removed.", "error");
         setLoading(false);
         return;
@@ -92,7 +89,6 @@ export default function LoginPage() {
           errorMessage = error.message || "Login failed. Please try again.";
       }
 
-      setError(errorMessage);
       showToast(`Login failed: ${errorMessage}`, "error");
       setLoading(false);
     }
@@ -251,12 +247,6 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                  ❌ {error}
-                </div>
-              )}
 
               <div className="flex justify-end">
                 <button
