@@ -57,10 +57,18 @@ const SETTINGS_SECTION_BUTTON_STYLE = {
   fontSize: "var(--fg-text-detail)",
 };
 
-const THRESHOLD_INPUT_STYLE = {
-  fontFamily: "var(--fg-mono)",
+const THRESHOLD_READONLY_INPUT_STYLE = {
+  background: "#f6f4f1",
+};
+
+const THRESHOLD_MUTED_READONLY_INPUT_STYLE = {
+  background: "#f6f4f1",
+  color: "#64748b",
+};
+
+const THRESHOLD_ACTION_BUTTON_STYLE = {
   fontSize: "var(--fg-text-micro)",
-  lineHeight: 1.2,
+  lineHeight: 1,
 };
 
 function buildThresholdForm(thresholds) {
@@ -841,8 +849,7 @@ export default function SettingsPage() {
                                     event.target.value,
                                   )
                                 }
-                                style={THRESHOLD_INPUT_STYLE}
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                className="fg-input"
                                 aria-label={`${meta.label} warning minimum`}
                               />
                             </label>
@@ -864,8 +871,7 @@ export default function SettingsPage() {
                                     event.target.value,
                                   )
                                 }
-                                style={THRESHOLD_INPUT_STYLE}
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                className="fg-input"
                                 aria-label={`${meta.label} warning maximum`}
                               />
                             </label>
@@ -880,8 +886,8 @@ export default function SettingsPage() {
                                 step={meta.precision > 0 ? "0.1" : "1"}
                                 readOnly
                                 value={thresholdForm[sensorKey]?.alert ?? ""}
-                                style={THRESHOLD_INPUT_STYLE}
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1 font-mono text-micro text-slate-500 outline-none"
+                                style={THRESHOLD_MUTED_READONLY_INPUT_STYLE}
+                                className="fg-input"
                                 aria-label={`${meta.label} alert threshold`}
                               />
                             </label>
@@ -894,8 +900,8 @@ export default function SettingsPage() {
                                 type="text"
                                 readOnly
                                 value={unitLabel}
-                                style={THRESHOLD_INPUT_STYLE}
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1 font-mono text-micro text-slate-950 outline-none"
+                                style={THRESHOLD_READONLY_INPUT_STYLE}
+                                className="fg-input"
                                 aria-label={`${meta.label} unit`}
                               />
                             </label>
@@ -914,7 +920,8 @@ export default function SettingsPage() {
                   <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button
                       type="button"
-                      className="inline-flex rounded-[6px] border border-[#e2ddd8] bg-white px-3 py-1.5 text-micro font-medium text-slate-600 transition hover:bg-[#f6f4f1] disabled:opacity-50"
+                      style={THRESHOLD_ACTION_BUTTON_STYLE}
+                      className="inline-flex items-center justify-center rounded-[5px] border border-[#e2ddd8] bg-white px-2.5 py-1 text-micro font-medium text-slate-600 transition hover:bg-[#f6f4f1] disabled:opacity-50"
                       onClick={resetThresholdForm}
                       disabled={thresholdSaving}
                     >
@@ -922,7 +929,8 @@ export default function SettingsPage() {
                     </button>
                     <button
                       type="button"
-                      className="inline-flex rounded-[6px] border border-red-600 bg-red-600 px-3 py-1.5 text-micro font-medium text-white transition hover:border-red-700 hover:bg-red-700 disabled:opacity-50"
+                      style={THRESHOLD_ACTION_BUTTON_STYLE}
+                      className="inline-flex items-center justify-center rounded-[5px] border border-red-600 bg-red-600 px-3 py-2.5 text-micro font-bold text-white transition hover:border-red-700 hover:bg-red-700 disabled:opacity-50"
                       onClick={saveThresholdSettings}
                       disabled={thresholdSaving || thresholdsLoading}
                     >
