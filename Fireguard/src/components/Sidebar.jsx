@@ -104,8 +104,8 @@ export default function Sidebar() {
         />
       )}
       <aside
-        className={`h-screen transition-all duration-300 ease-in-out ${
-          expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative"
+        className={`h-screen flex-shrink-0 overflow-visible transition-all duration-300 ease-in-out ${
+          expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative z-50"
         } ${expanded ? "w-64" : "w-20"}`}
       >
         <nav className="relative flex h-full flex-col border-r border-[#e4e4e0] bg-white shadow-[8px_0_30px_rgba(15,23,42,0.035)]">
@@ -129,7 +129,7 @@ export default function Sidebar() {
             )}
             <button
               onClick={() => setExpanded((curr) => !curr)}
-              className="absolute -right-3 top-7 flex h-7 w-7 items-center justify-center rounded-lg border border-[#e4e4e0] bg-white text-[#71717a] shadow-sm transition-colors hover:bg-[#fafaf8]"
+              className="absolute -right-3 top-7 z-20 flex h-7 w-7 items-center justify-center rounded-lg border border-[#e4e4e0] bg-white text-[#71717a] shadow-sm transition-colors hover:bg-[#fafaf8]"
               aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
             >
               {expanded ? (
