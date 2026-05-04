@@ -95,10 +95,10 @@ enum AlertLevel {
 // ===================== THRESHOLD STRUCTURE =====================
 struct Thresholds {
   float temp_warning = 40.0;
-  float temp_warning_max = 49.0;
+  float temp_warning_max = 50.0;
   float temp_alert = 50.0;
   float humidity_warning = 80.0;
-  float humidity_warning_max = 99.0;
+  float humidity_warning_max = 100.0;
   float humidity_alert = 100.0;
   float gas_warning = 1.5;
   float gas_warning_max = 3.0;
@@ -272,8 +272,7 @@ void syncThresholdsFromFirebase() {
       Serial.println("Temp Alert: " + String(thresholds.temp_alert));
     }
     if (!tempWarningMaxLoaded) {
-      float preferredWarningMax = thresholds.temp_alert - 1.0;
-      thresholds.temp_warning_max = thresholds.temp_warning < preferredWarningMax ? preferredWarningMax : thresholds.temp_alert;
+      thresholds.temp_warning_max = thresholds.temp_alert;
       Serial.println("Temp Warning Max derived: " + String(thresholds.temp_warning_max));
     }
     
@@ -291,8 +290,7 @@ void syncThresholdsFromFirebase() {
       Serial.println("Humidity Alert: " + String(thresholds.humidity_alert));
     }
     if (!humidityWarningMaxLoaded) {
-      float preferredWarningMax = thresholds.humidity_alert - 1.0;
-      thresholds.humidity_warning_max = thresholds.humidity_warning < preferredWarningMax ? preferredWarningMax : thresholds.humidity_alert;
+      thresholds.humidity_warning_max = thresholds.humidity_alert;
       Serial.println("Humidity Warning Max derived: " + String(thresholds.humidity_warning_max));
     }
     

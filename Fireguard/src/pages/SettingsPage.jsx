@@ -66,7 +66,7 @@ function buildThresholdForm(thresholds) {
         sensorKey,
         normalized[sensorKey].warningMax,
       ),
-      alert: formatThresholdNumber(sensorKey, normalized[sensorKey].alert),
+      alert: getAlertFromWarningMax(sensorKey, normalized[sensorKey].warningMax),
     };
     return form;
   }, {});
@@ -77,12 +77,23 @@ function getSensorUnitLabel(sensorKey) {
   return unit === "C" ? "°C" : unit;
 }
 
+function getAlertFromWarningMax(sensorKey, value) {
+  if (value === "") return "";
+
+  const warningMax = Number(value);
+  if (!Number.isFinite(warningMax)) return value;
+
+  return formatThresholdNumber(sensorKey, warningMax);
+}
+
 function parseThresholdForm(form) {
   return SENSOR_THRESHOLD_ORDER.reduce((thresholds, sensorKey) => {
     const meta = SENSOR_THRESHOLD_DEFINITIONS[sensorKey];
     const warning = Number(form[sensorKey]?.warning);
     const warningMax = Number(form[sensorKey]?.warningMax);
-    const alert = Number(form[sensorKey]?.alert);
+    const alert = Number(
+      getAlertFromWarningMax(sensorKey, form[sensorKey]?.warningMax ?? ""),
+    );
 
     if (
       !Number.isFinite(warning) ||
@@ -275,6 +286,19 @@ export default function SettingsPage() {
       [sensorKey]: {
         ...prev[sensorKey],
         [field]: value,
+      },
+    }));
+  };
+
+  const updateWarningMaxField = (sensorKey, value) => {
+    setThresholdDirty(true);
+    setThresholdError("");
+    setThresholdForm((prev) => ({
+      ...prev,
+      [sensorKey]: {
+        ...prev[sensorKey],
+        warningMax: value,
+        alert: getAlertFromWarningMax(sensorKey, value),
       },
     }));
   };
@@ -814,9 +838,8 @@ export default function SettingsPage() {
                                   thresholdForm[sensorKey]?.warningMax ?? ""
                                 }
                                 onChange={(event) =>
-                                  updateThresholdField(
+                                  updateWarningMaxField(
                                     sensorKey,
-                                    "warningMax",
                                     event.target.value,
                                   )
                                 }
@@ -833,15 +856,9 @@ export default function SettingsPage() {
                                 type="number"
                                 min="0"
                                 step={meta.precision > 0 ? "0.1" : "1"}
+                                readOnly
                                 value={thresholdForm[sensorKey]?.alert ?? ""}
-                                onChange={(event) =>
-                                  updateThresholdField(
-                                    sensorKey,
-                                    "alert",
-                                    event.target.value,
-                                  )
-                                }
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1.5 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1.5 font-mono text-micro text-slate-500 outline-none"
                                 aria-label={`${meta.label} alert threshold`}
                               />
                             </label>

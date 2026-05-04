@@ -13,7 +13,7 @@ export const SENSOR_THRESHOLD_DEFINITIONS = {
     precision: 0,
     defaults: {
       warning: 40,
-      warningMax: 49,
+      warningMax: 50,
       alert: 50,
     },
   },
@@ -46,7 +46,7 @@ export const SENSOR_THRESHOLD_DEFINITIONS = {
     precision: 0,
     defaults: {
       warning: 80,
-      warningMax: 99,
+      warningMax: 100,
       alert: 100,
     },
   },
@@ -72,12 +72,6 @@ function toOptionalFiniteNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function deriveWarningMax(sensorKey, warning, alert) {
-  const precision = SENSOR_THRESHOLD_DEFINITIONS[sensorKey].precision;
-  const preferredWarningMax = precision === 0 ? alert - 1 : alert;
-  return warning < preferredWarningMax ? preferredWarningMax : alert;
-}
-
 function normalizePair(sensorKey, rawPair = {}) {
   const defaults = SENSOR_THRESHOLD_DEFINITIONS[sensorKey].defaults;
   let warning = toFiniteNumber(rawPair.warning, defaults.warning);
@@ -87,7 +81,7 @@ function normalizePair(sensorKey, rawPair = {}) {
   let alert = toFiniteNumber(rawPair.alert, defaults.alert);
 
   if (warningMax === null) {
-    warningMax = deriveWarningMax(sensorKey, warning, alert);
+    warningMax = alert;
   }
 
   if (warning >= warningMax || warningMax > alert) {
