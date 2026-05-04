@@ -66,11 +66,6 @@ const THRESHOLD_MUTED_READONLY_INPUT_STYLE = {
   color: "#64748b",
 };
 
-const THRESHOLD_ACTION_BUTTON_STYLE = {
-  fontSize: "var(--fg-text-micro)",
-  lineHeight: 1,
-};
-
 function buildThresholdForm(thresholds) {
   const normalized = normalizeThresholds(thresholds);
 
@@ -920,8 +915,7 @@ export default function SettingsPage() {
                   <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button
                       type="button"
-                      style={THRESHOLD_ACTION_BUTTON_STYLE}
-                      className="inline-flex items-center justify-center rounded-[5px] border border-[#e2ddd8] bg-white px-2.5 py-1 text-micro font-medium text-slate-600 transition hover:bg-[#f6f4f1] disabled:opacity-50"
+                      className="fg-btn"
                       onClick={resetThresholdForm}
                       disabled={thresholdSaving}
                     >
@@ -929,8 +923,7 @@ export default function SettingsPage() {
                     </button>
                     <button
                       type="button"
-                      style={THRESHOLD_ACTION_BUTTON_STYLE}
-                      className="inline-flex items-center justify-center rounded-[5px] border border-red-600 bg-red-600 px-3 py-2.5 text-micro font-bold text-white transition hover:border-red-700 hover:bg-red-700 disabled:opacity-50"
+                      className="fg-btn fg-btn-primary"
                       onClick={saveThresholdSettings}
                       disabled={thresholdSaving || thresholdsLoading}
                     >
