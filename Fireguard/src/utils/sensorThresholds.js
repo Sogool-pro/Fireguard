@@ -151,6 +151,22 @@ export function isRoomWarning(room, thresholds) {
   });
 }
 
+export function shouldPlayRoomBuzzer(room, thresholds) {
+  if (!room || room.isOffline || room.silenced === true) return false;
+
+  const message = String(room.alert_message || "").toLowerCase();
+  const messageAlarm =
+    message.includes("alert") ||
+    message.includes("flame") ||
+    message.includes("warning");
+
+  return (
+    isRoomAlert(room, thresholds) ||
+    isRoomWarning(room, thresholds) ||
+    messageAlarm
+  );
+}
+
 export function formatThresholdNumber(sensorKey, value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "-";

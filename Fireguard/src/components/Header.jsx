@@ -1,48 +1,64 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { FaExclamationTriangle } from "react-icons/fa";
 import { Bell, ExternalLink } from "lucide-react";
 import { useRoom } from "../context/RoomContext";
+import { useThresholds } from "../context/ThresholdContext";
 import { useNotification } from "../context/NotificationContext";
 import { db } from "../firebase";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
 import { useLocation, useNavigate } from "react-router-dom";
+import buzzer from "../public/buzzer.mp3";
+import { shouldPlayRoomBuzzer } from "../utils/sensorThresholds";
 
 export default function Header() {
   const { rooms } = useRoom();
+  const { thresholds } = useThresholds();
   const { logsAlert, setLogsAlert } = useNotification();
   const [showNotifications, setShowNotifications] = useState(false);
   const [recentAlerts, setRecentAlerts] = useState([]);
   const notifRef = useRef();
   const buzzerAudioRef = useRef(null);
-  // Determine if buzzer should play: only active unsilenced room alarms
-  const shouldBuzzerPlay = rooms.some(
-      (room) =>
-        (room.fire ||
-          room.temperature > 55 ||
-          room.smoke > 600 ||
-          room.carbonMonoxide > 70 ||
-          (room.alert_level && room.alert_level.toLowerCase() === "alert")) &&
-        room.silenced !== true,
-    );
 
-  // Play or stop buzzer.mp3 based on shouldBuzzerPlay
+  const shouldBuzzerPlay = useMemo(
+    () => rooms.some((room) => shouldPlayRoomBuzzer(room, thresholds)),
+    [rooms, thresholds],
+  );
+
+  // Play or stop buzzer.mp3 based on the same state that drives warning/alert room cards.
   useEffect(() => {
     if (!buzzerAudioRef.current) {
-      buzzerAudioRef.current = new Audio("/buzzer.mp3");
+      buzzerAudioRef.current = new Audio(buzzer);
       buzzerAudioRef.current.loop = true;
+      buzzerAudioRef.current.preload = "auto";
     }
+
     const audio = buzzerAudioRef.current;
-    if (shouldBuzzerPlay) {
+    const stopBuzzer = () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+    const playBuzzer = () => {
+      if (!shouldBuzzerPlay) return;
       audio.volume = 1.0;
       audio.play().catch(() => {});
-    } else {
-      audio.pause();
-      audio.currentTime = 0;
+    };
+
+    if (!shouldBuzzerPlay) {
+      stopBuzzer();
+      return undefined;
     }
-    // Pause on unmount
+
+    playBuzzer();
+
+    window.addEventListener("keydown", playBuzzer);
+    window.addEventListener("pointerdown", playBuzzer);
+    window.addEventListener("touchstart", playBuzzer);
+
     return () => {
-      audio.pause();
-      audio.currentTime = 0;
+      window.removeEventListener("keydown", playBuzzer);
+      window.removeEventListener("pointerdown", playBuzzer);
+      window.removeEventListener("touchstart", playBuzzer);
+      stopBuzzer();
     };
   }, [shouldBuzzerPlay]);
 

@@ -9,7 +9,7 @@ import { db } from "../firebase";
 import { ref, onValue, update } from "firebase/database";
 import buzzer from "../public/buzzer.mp3";
 import { useThresholds } from "./ThresholdContext";
-import { isRoomAlert } from "../utils/sensorThresholds";
+import { shouldPlayRoomBuzzer } from "../utils/sensorThresholds";
 const RoomContext = createContext();
 
 export function useRoom() {
@@ -148,17 +148,11 @@ export function RoomProvider({ children }) {
     }
   }, [buzzerOn]);
 
-  // Check for alarms and set buzzer state
+  // Check for active warnings/alerts and set buzzer state
   useEffect(() => {
-    const anyAlarm = rooms.some((room) => {
-      if (room.isOffline || room.silenced === true) return false;
-      const message = String(room.alert_message || "").toLowerCase();
-      const messageAlarm =
-        message.includes("alert") ||
-        message.includes("flame");
-
-      return isRoomAlert(room, thresholds) || messageAlarm;
-    });
+    const anyAlarm = rooms.some((room) =>
+      shouldPlayRoomBuzzer(room, thresholds),
+    );
 
     setBuzzerOn(anyAlarm);
   }, [rooms, thresholds]);
