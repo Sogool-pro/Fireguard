@@ -126,7 +126,9 @@ export default function Dashboard() {
         <span className="sec-title">Rooms</span>
         <span className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-1.5 font-mono text-label text-[#71717a]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#16803c]" />
-          {alertCount > 0 ? `${alertCount} active alert` : "Auto-registered nodes"}
+          {alertCount > 0
+            ? `${alertCount} active alert`
+            : "Auto-registered nodes"}
         </span>
       </div>
 
@@ -208,10 +210,10 @@ export default function Dashboard() {
               {SENSOR_THRESHOLD_ORDER.map((sensorKey) => (
                 <tr key={sensorKey}>
                   <td>{SENSOR_THRESHOLD_DEFINITIONS[sensorKey].label}</td>
-                  <td className="font-mono text-[#c47d0a]">
+                  <td className="font-mono text-[#c47d0a] co-value warning">
                     {formatWarningRange(sensorKey, thresholds)}
                   </td>
-                  <td className="font-mono text-[#bf2d2d]">
+                  <td className="font-mono text-[#bf2d2d] co-value danger">
                     {formatAlertAbove(sensorKey, thresholds)}
                   </td>
                 </tr>
@@ -219,7 +221,9 @@ export default function Dashboard() {
               <tr>
                 <td>Flame Sensor</td>
                 <td className="font-mono text-[#a1a1aa]">-</td>
-                <td className="font-mono text-[#bf2d2d]">Detected</td>
+                <td className="font-mono text-[#bf2d2d] co-value danger">
+                  Detected
+                </td>
               </tr>
             </tbody>
           </table>
