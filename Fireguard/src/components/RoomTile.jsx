@@ -2,23 +2,14 @@ import React from "react";
 import { Home, Power } from "lucide-react";
 import { useRoom } from "../context/RoomContext";
 import { useRoomChartModal } from "../context/RoomChartModalContext";
+import { useThresholds } from "../context/ThresholdContext";
+import {
+  getSensorLevel,
+  isRoomAlert,
+  isRoomWarning,
+} from "../utils/sensorThresholds";
 
-function hasRoomAlert(room) {
-  const level = String(room.alert_level || "").toLowerCase();
-  return (
-    room.fire ||
-    room.temperature > 55 ||
-    room.smoke > 600 ||
-    room.carbonMonoxide > 70 ||
-    level === "alert"
-  );
-}
-
-function hasRoomWarning(room) {
-  return String(room.alert_level || "").toLowerCase() === "warning";
-}
-
-function getRoomVisualState(room) {
+function getRoomVisualState(room, thresholds) {
   if (room.isOffline) {
     return {
       card: "s-offline",
@@ -37,7 +28,7 @@ function getRoomVisualState(room) {
       message: "Alarm silenced",
     };
   }
-  if (hasRoomAlert(room)) {
+  if (isRoomAlert(room, thresholds)) {
     return {
       card: "s-alert",
       status: "alert",
@@ -46,7 +37,7 @@ function getRoomVisualState(room) {
       message: room.alert_message || "Sensor alert detected",
     };
   }
-  if (hasRoomWarning(room)) {
+  if (isRoomWarning(room, thresholds)) {
     return {
       card: "s-warning",
       status: "warning",
@@ -64,18 +55,19 @@ function getRoomVisualState(room) {
   };
 }
 
-function sensorTone(value, warningAt, alertAt) {
-  const number = Number(value) || 0;
-  if (number >= alertAt) return "danger";
-  if (number >= warningAt) return "warn";
+function sensorTone(value, sensorKey, thresholds) {
+  const level = getSensorLevel(value, sensorKey, thresholds);
+  if (level === "alert") return "danger";
+  if (level === "warning") return "warn";
   return "";
 }
 
 export default function RoomTile(props) {
   const { toggleRoomSilence } = useRoom();
   const { showRoomChart } = useRoomChartModal();
+  const { thresholds } = useThresholds();
   const room = props;
-  const visual = getRoomVisualState(room);
+  const visual = getRoomVisualState(room, thresholds);
 
   const handlePowerClick = (event) => {
     event.stopPropagation();
@@ -114,28 +106,28 @@ export default function RoomTile(props) {
       <div className="rc-sensors">
         <div className="sensor-blk">
           <div className="s-lbl">Temperature</div>
-          <div className={`s-val ${sensorTone(temperature, 40, 50)}`}>
+          <div className={`s-val ${sensorTone(temperature, "temperature", thresholds)}`}>
             {temperature}
             <span className="unit">C</span>
           </div>
         </div>
         <div className="sensor-blk">
           <div className="s-lbl">CO Level</div>
-          <div className={`s-val ${sensorTone(carbonMonoxide, 1.6, 3.1)}`}>
+          <div className={`s-val ${sensorTone(carbonMonoxide, "co", thresholds)}`}>
             {carbonMonoxide}
             <span className="unit">ppm</span>
           </div>
         </div>
         <div className="sensor-blk">
           <div className="s-lbl">Humidity</div>
-          <div className={`s-val ${sensorTone(humidity, 81, 101)}`}>
+          <div className={`s-val ${sensorTone(humidity, "humidity", thresholds)}`}>
             {humidity}
             <span className="unit">%</span>
           </div>
         </div>
         <div className="sensor-blk">
           <div className="s-lbl">Smoke & Gas</div>
-          <div className={`s-val ${sensorTone(smoke, 1.6, 3.1)}`}>
+          <div className={`s-val ${sensorTone(smoke, "gas", thresholds)}`}>
             {smoke}
             <span className="unit">ppm</span>
           </div>
@@ -162,13 +154,6 @@ export default function RoomTile(props) {
         </button>
       </div>
 
-      {!room.isOffline && (
-        <div className="border-t border-[#eeeeeb] bg-white px-[18px] py-2 font-mono text-[10px] text-[#a1a1aa]">
-          <span className="truncate">
-            Last update: {room.sensorTimestampString || "N/A"}
-          </span>
-        </div>
-      )}
     </article>
   );
 }

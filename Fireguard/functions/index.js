@@ -32,14 +32,14 @@ exports.sendTemporaryPassword = functions.https.onCall(
         to: email,
         subject: "Welcome to FireGuard - Temporary Password",
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #dc2626;">Welcome to FireGuard!</h2>
             <p>Dear ${displayName || "User"},</p>
             <p>Your account has been successfully created. Use the temporary password below to log in for the first time:</p>
             
             <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 0; font-size: 12px; color: #6b7280;">Temporary Password:</p>
-              <p style="margin: 10px 0; font-size: 24px; font-weight: bold; font-family: monospace; color: #dc2626;">
+              <p style="margin: 10px 0; font-size: 24px; font-weight: bold; font-family: 'DM Mono', monospace; color: #dc2626;">
                 ${tempPassword}
               </p>
             </div>
@@ -152,14 +152,14 @@ exports.resetPasswordByEmail = functions.https.onCall(async (data, context) => {
         to: email,
         subject: "FireGuard - Password Reset",
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #dc2626;">Password Reset</h2>
               <p>Dear User,</p>
               <p>Your password has been reset. Use the temporary password below to log in:</p>
               
               <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0; font-size: 12px; color: #6b7280;">Temporary Password:</p>
-                <p style="margin: 10px 0; font-size: 24px; font-weight: bold; font-family: monospace; color: #dc2626;">
+                <p style="margin: 10px 0; font-size: 24px; font-weight: bold; font-family: 'DM Mono', monospace; color: #dc2626;">
                   ${tempPassword}
                 </p>
               </div>

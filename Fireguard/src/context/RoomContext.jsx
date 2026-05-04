@@ -8,6 +8,8 @@ import React, {
 import { db } from "../firebase";
 import { ref, onValue, update } from "firebase/database";
 import buzzer from "../public/buzzer.mp3";
+import { useThresholds } from "./ThresholdContext";
+import { isRoomAlert } from "../utils/sensorThresholds";
 const RoomContext = createContext();
 
 export function useRoom() {
@@ -20,6 +22,7 @@ function didNodeTimeout(sensor) {
 }
 
 export function RoomProvider({ children }) {
+  const { thresholds } = useThresholds();
   const [rooms, setRooms] = useState([]);
   const [buzzerOn, setBuzzerOn] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -149,23 +152,16 @@ export function RoomProvider({ children }) {
   useEffect(() => {
     const anyAlarm = rooms.some((room) => {
       if (room.isOffline || room.silenced === true) return false;
-      const level = String(room.alert_level || "").toLowerCase();
       const message = String(room.alert_message || "").toLowerCase();
-      const thresholdAlarm =
-        room.fire ||
-        room.temperature > 55 ||
-        room.smoke > 600 ||
-        room.carbonMonoxide > 70;
-      const alertLevelAlarm = level === "alert";
       const messageAlarm =
         message.includes("alert") ||
         message.includes("flame");
 
-      return thresholdAlarm || alertLevelAlarm || messageAlarm;
+      return isRoomAlert(room, thresholds) || messageAlarm;
     });
 
     setBuzzerOn(anyAlarm);
-  }, [rooms]);
+  }, [rooms, thresholds]);
 
   const toggleRoomSilence = (nodeId) => {
     if (!nodeId) return;

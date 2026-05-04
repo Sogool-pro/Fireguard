@@ -431,7 +431,7 @@ export default function LogsPage() {
             </span>
             {queuedCount > 0 ? (
               <>
-                <span className="rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 font-mono text-[11px] text-[#1d4ed8]">
+                <span className="rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 font-mono text-label text-[#1d4ed8]">
                   {queuedCount} pending sync
                 </span>
                 <button

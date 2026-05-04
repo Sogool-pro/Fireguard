@@ -13,6 +13,7 @@ import { RoomProvider } from "./context/RoomContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ToastProvider } from "./context/ToastContext";
 import { AlarmModalProvider } from "./context/AlarmModalContext";
+import { ThresholdProvider } from "./context/ThresholdContext";
 import AlarmWatcher from "./components/AlarmWatcher";
 import {
   RoomChartModalProvider,
@@ -54,46 +55,48 @@ function LazyRoomChartModal() {
 function ProtectedShell() {
   return (
     <AlarmModalProvider>
-      <RoomProvider>
-        <NotificationProvider>
-          <RoomChartModalProvider>
-            <AlarmWatcher />
-            <LazyRoomChartModal />
-            <div className="flex h-screen overflow-hidden">
-              <Sidebar />
-              <div className="fg-app-content flex-1 flex flex-col min-h-0 h-screen overflow-y-auto">
-                <Header />
-                <main className="flex-1 min-h-0 overflow-y-auto">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/logs" element={<LogsPage />} />
-                    <Route path="/analytics" element={<AnalyticsPage />} />
-                    <Route
-                      path="/users"
-                      element={
-                        <Suspense fallback={<PageLoader />}>
-                          <UsersPage />
-                        </Suspense>
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        <PrivateRoute allowedRoles={["admin"]}>
+      <ThresholdProvider>
+        <RoomProvider>
+          <NotificationProvider>
+            <RoomChartModalProvider>
+              <AlarmWatcher />
+              <LazyRoomChartModal />
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <div className="fg-app-content flex-1 flex flex-col min-h-0 h-screen overflow-y-auto">
+                  <Header />
+                  <main className="flex-1 min-h-0 overflow-y-auto">
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/logs" element={<LogsPage />} />
+                      <Route path="/analytics" element={<AnalyticsPage />} />
+                      <Route
+                        path="/users"
+                        element={
                           <Suspense fallback={<PageLoader />}>
-                            <SettingsPage />
+                            <UsersPage />
                           </Suspense>
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route path="/profile" element={<ProfilePage />} />
-                  </Routes>
-                </main>
+                        }
+                      />
+                      <Route
+                        path="/settings"
+                        element={
+                          <PrivateRoute allowedRoles={["admin"]}>
+                            <Suspense fallback={<PageLoader />}>
+                              <SettingsPage />
+                            </Suspense>
+                          </PrivateRoute>
+                        }
+                      />
+                      <Route path="/profile" element={<ProfilePage />} />
+                    </Routes>
+                  </main>
+                </div>
               </div>
-            </div>
-          </RoomChartModalProvider>
-        </NotificationProvider>
-      </RoomProvider>
+            </RoomChartModalProvider>
+          </NotificationProvider>
+        </RoomProvider>
+      </ThresholdProvider>
     </AlarmModalProvider>
   );
 }

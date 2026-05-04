@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RoomTile from "../components/RoomTile";
 import { useRoom } from "../context/RoomContext";
+import { useThresholds } from "../context/ThresholdContext";
 import { db } from "../firebase";
 import {
   endAt,
@@ -12,21 +13,14 @@ import {
   ref,
   startAt,
 } from "firebase/database";
-
-function isRoomAlert(room) {
-  const level = String(room.alert_level || "").toLowerCase();
-  return (
-    room.fire ||
-    room.temperature > 55 ||
-    room.smoke > 600 ||
-    room.carbonMonoxide > 70 ||
-    level === "alert"
-  );
-}
-
-function isRoomWarning(room) {
-  return String(room.alert_level || "").toLowerCase() === "warning";
-}
+import {
+  SENSOR_THRESHOLD_DEFINITIONS,
+  SENSOR_THRESHOLD_ORDER,
+  formatAlertAbove,
+  formatWarningRange,
+  isRoomAlert,
+  isRoomWarning,
+} from "../utils/sensorThresholds";
 
 function getAlertTone(alert) {
   const level = String(alert.alert_level || alert.level || "").toLowerCase();
@@ -44,6 +38,7 @@ function formatAlertTime(timestamp) {
 
 export default function Dashboard() {
   const { rooms } = useRoom();
+  const { thresholds } = useThresholds();
   const [alertsToday, setAlertsToday] = useState(0);
   const [recentAlerts, setRecentAlerts] = useState([]);
   const navigate = useNavigate();
@@ -87,11 +82,11 @@ export default function Dashboard() {
 
   const visibleRooms = rooms.filter((room) => !room.archived);
   const warningCount = visibleRooms.filter(
-    (room) => !room.isOffline && isRoomWarning(room),
+    (room) => !room.isOffline && isRoomWarning(room, thresholds),
   ).length;
   const onlineCount = visibleRooms.filter((room) => !room.isOffline).length;
   const alertCount = visibleRooms.filter(
-    (room) => !room.isOffline && isRoomAlert(room),
+    (room) => !room.isOffline && isRoomAlert(room, thresholds),
   ).length;
 
   return (
@@ -129,7 +124,7 @@ export default function Dashboard() {
 
       <div className="sec-hdr">
         <span className="sec-title">Rooms</span>
-        <span className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-1.5 font-mono text-[11px] text-[#71717a]">
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-1.5 font-mono text-label text-[#71717a]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#16803c]" />
           {alertCount > 0 ? `${alertCount} active alert` : "Auto-registered nodes"}
         </span>
@@ -210,26 +205,17 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>Temperature</td>
-                <td className="font-mono text-[#c47d0a]">40-49 C</td>
-                <td className="font-mono text-[#bf2d2d]">&gt;50 C</td>
-              </tr>
-              <tr>
-                <td>Smoke / Gas</td>
-                <td className="font-mono text-[#c47d0a]">1.6-3.0</td>
-                <td className="font-mono text-[#bf2d2d]">&gt;3.0</td>
-              </tr>
-              <tr>
-                <td>Carbon Monoxide</td>
-                <td className="font-mono text-[#c47d0a]">1.6-3.0</td>
-                <td className="font-mono text-[#bf2d2d]">&gt;3.0</td>
-              </tr>
-              <tr>
-                <td>Humidity</td>
-                <td className="font-mono text-[#c47d0a]">81-100%</td>
-                <td className="font-mono text-[#a1a1aa]">-</td>
-              </tr>
+              {SENSOR_THRESHOLD_ORDER.map((sensorKey) => (
+                <tr key={sensorKey}>
+                  <td>{SENSOR_THRESHOLD_DEFINITIONS[sensorKey].label}</td>
+                  <td className="font-mono text-[#c47d0a]">
+                    {formatWarningRange(sensorKey, thresholds)}
+                  </td>
+                  <td className="font-mono text-[#bf2d2d]">
+                    {formatAlertAbove(sensorKey, thresholds)}
+                  </td>
+                </tr>
+              ))}
               <tr>
                 <td>Flame Sensor</td>
                 <td className="font-mono text-[#a1a1aa]">-</td>

@@ -122,7 +122,7 @@ export default function Header() {
           <span className="text-base font-semibold tracking-normal text-[#18181b]">
             {pageTitle}
           </span>
-          <span className="ml-2.5 font-mono text-[11px] uppercase tracking-[0.03em] text-[#a1a1aa]">
+          <span className="ml-2.5 font-mono text-label uppercase tracking-[0.03em] text-[#a1a1aa]">
             {topbarDate}
           </span>
         </div>
@@ -139,7 +139,7 @@ export default function Header() {
               <span className="block truncate text-xs font-semibold text-[#bf2d2d]">
                 Panabo City Fire Station
               </span>
-              <span className="block truncate text-[10px] text-[#a1a1aa]">
+              <span className="block truncate text-micro text-[#a1a1aa]">
                 (084) 823-1773 / 0928-458-7586
               </span>
             </span>
@@ -165,10 +165,10 @@ export default function Header() {
               <>
                 <div className="fixed right-8 top-[64px] z-[99999] hidden w-[372px] overflow-hidden rounded-[18px] border border-[rgba(24,24,27,0.09)] bg-white shadow-[0_28px_70px_rgba(15,23,42,0.22),0_0_0_1px_rgba(255,255,255,0.72)] md:block">
                   <div className="flex items-center justify-between border-b border-[#eeeeeb] bg-gradient-to-b from-white to-[#fbfbf9] px-4 py-3.5">
-                    <div className="text-[13px] font-bold tracking-normal text-[#18181b]">
+                    <div className="text-detail font-bold tracking-normal text-[#18181b]">
                       Recent Alerts
                     </div>
-                    <div className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-1 font-mono text-[10px] text-[#bf2d2d]">
+                    <div className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-1 font-mono text-micro text-[#bf2d2d]">
                       {recentAlerts.length} Latest
                     </div>
                   </div>
@@ -227,7 +227,7 @@ export default function Header() {
                             <div className="mt-0.5 truncate text-xs leading-5 text-[#71717a]">
                               {alert.message || "-"}
                             </div>
-                            <div className="mt-1 font-mono text-[10px] text-[#a1a1aa]">
+                            <div className="mt-1 font-mono text-micro text-[#a1a1aa]">
                               {timeAgo(alert.timestamp)}
                             </div>
                           </div>

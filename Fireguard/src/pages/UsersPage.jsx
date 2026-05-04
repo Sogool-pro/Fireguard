@@ -221,19 +221,19 @@ export default function UsersPage() {
     >
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-[#a1a1aa]">
+          <div className="mb-1.5 font-mono text-micro uppercase tracking-[0.14em] text-[#a1a1aa]">
             Access Control
           </div>
           <h1 className="text-2xl font-bold leading-tight tracking-normal text-[#18181b]">
             Team Members
           </h1>
-          <p className="mt-2 max-w-2xl text-[13.5px] leading-6 text-[#71717a]">
+          <p className="mt-2 max-w-2xl text-detail leading-6 text-[#71717a]">
             Manage access and permissions for your monitoring team.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-2 font-mono text-[11px] text-[#71717a]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-2 font-mono text-label text-[#71717a]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#16803c] shadow-[0_0_0_3px_#f0fdf4]" />
             Live roster
           </div>
@@ -252,7 +252,7 @@ export default function UsersPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg border border-[#eeeeeb] bg-[#fafaf8] px-3 py-2">
-              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#a1a1aa]">
+              <div className="font-mono text-micro uppercase tracking-[0.08em] text-[#a1a1aa]">
                 Total
               </div>
               <div className="mt-1 font-mono text-xl text-[#18181b]">
@@ -260,7 +260,7 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2">
-              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#bf2d2d]">
+              <div className="font-mono text-micro uppercase tracking-[0.08em] text-[#bf2d2d]">
                 Admin
               </div>
               <div className="mt-1 font-mono text-xl text-[#bf2d2d]">
@@ -268,7 +268,7 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="rounded-lg border border-[#eeeeeb] bg-[#fafaf8] px-3 py-2">
-              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#a1a1aa]">
+              <div className="font-mono text-micro uppercase tracking-[0.08em] text-[#a1a1aa]">
                 Users
               </div>
               <div className="mt-1 font-mono text-xl text-[#18181b]">
@@ -366,13 +366,13 @@ export default function UsersPage() {
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span
-                      className={`inline-flex rounded px-2 py-0.5 font-mono text-[10px] font-medium ${roleBadgeClass(
+                      className={`inline-flex rounded px-2 py-0.5 font-mono text-micro font-medium ${roleBadgeClass(
                         u.role,
                       )}`}
                     >
                       {roleLabel(u.role)}
                     </span>
-                    <span className="font-mono text-[10px] text-[#a1a1aa]">
+                    <span className="font-mono text-micro text-[#a1a1aa]">
                       Joined {formatDate(u.createdAt)}
                     </span>
                   </div>
@@ -380,7 +380,7 @@ export default function UsersPage() {
                     <button
                       type="button"
                       onClick={() => openEditUser(u)}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#e4e4e0] bg-[#fafaf8] px-2.5 text-[11px] font-medium text-[#71717a] transition-colors hover:border-[#71717a]"
+                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#e4e4e0] bg-[#fafaf8] px-2.5 text-label font-medium text-[#71717a] transition-colors hover:border-[#71717a]"
                     >
                       <Pencil className="h-3 w-3" />
                       Edit
@@ -388,7 +388,7 @@ export default function UsersPage() {
                     <button
                       type="button"
                       onClick={() => openDeleteConfirm(u)}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#fecaca] bg-[#fef2f2] px-2.5 text-[11px] font-medium text-[#bf2d2d] transition-colors hover:bg-[#fee2e2]"
+                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#fecaca] bg-[#fef2f2] px-2.5 text-label font-medium text-[#bf2d2d] transition-colors hover:bg-[#fee2e2]"
                     >
                       <Trash2 className="h-3 w-3" />
                       Remove
@@ -406,17 +406,17 @@ export default function UsersPage() {
               <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#eeeeeb] text-[#a1a1aa]">
                 <Plus className="h-[18px] w-[18px]" />
               </span>
-              <span className="block text-[13px] font-medium text-[#71717a]">
+              <span className="block text-detail font-medium text-[#71717a]">
                 Invite a team member
               </span>
-              <span className="mt-1 block text-[11px] text-[#a1a1aa]">
+              <span className="mt-1 block text-label text-[#a1a1aa]">
                 Grant access to monitoring staff
               </span>
             </button>
           </div>
 
           <div className="mt-7">
-            <div className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[#a1a1aa]">
+            <div className="mb-3 font-mono text-label font-medium uppercase tracking-[0.08em] text-[#a1a1aa]">
               Role Permissions
             </div>
             <div className="overflow-hidden rounded-xl border border-[#e4e4e0] bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.055)]">
@@ -424,13 +424,13 @@ export default function UsersPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
+                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-label font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
                         Permission
                       </th>
-                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
+                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-label font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
                         Administrator
                       </th>
-                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
+                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-label font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
                         User
                       </th>
                     </tr>

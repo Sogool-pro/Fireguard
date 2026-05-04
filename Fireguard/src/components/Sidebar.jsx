@@ -15,9 +15,9 @@ import {
   Settings,
   User,
   LogOut,
-  Flame,
 } from "lucide-react";
 import { useNotification } from "../context/NotificationContext";
+import fireguardLogo from "../assets/fireguard-logo.png";
 
 const SidebarContext = createContext();
 
@@ -113,15 +113,19 @@ export default function Sidebar() {
       >
         <nav className="relative flex h-full flex-col border-r border-[#e4e4e0] bg-white shadow-[8px_0_30px_rgba(15,23,42,0.035)]">
           <div className="relative flex items-center gap-2.5 border-b border-[#eeeeeb] px-[18px] py-5">
-            <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-[#bf2d2d] text-white shadow-[0_2px_8px_rgba(191,45,45,0.25)]">
-              <Flame className="h-[17px] w-[17px]" fill="currentColor" />
+            <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[9px] shadow-[0_2px_8px_rgba(191,45,45,0.25)]">
+              <img
+                src={fireguardLogo}
+                alt="FireGuard"
+                className="h-full w-full object-cover"
+              />
             </div>
             {expanded && (
               <div className="min-w-0">
                 <div className="text-sm font-semibold tracking-normal text-[#18181b]">
                   FireGuard
                 </div>
-                <div className="mt-px font-mono text-[10px] uppercase tracking-[0.05em] text-[#a1a1aa]">
+                <div className="mt-px font-mono text-micro uppercase tracking-[0.05em] text-[#a1a1aa]">
                   Fire Alarm Monitoring
                 </div>
               </div>
@@ -149,7 +153,7 @@ export default function Sidebar() {
                 return (
                   <React.Fragment key={group}>
                     {expanded && (
-                      <li className="px-2 pb-2 pt-2 font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-[#a1a1aa] first:pt-0">
+                      <li className="px-2 pb-2 pt-2 font-mono text-micro font-medium uppercase tracking-[0.12em] text-[#a1a1aa] first:pt-0">
                         {group}
                       </li>
                     )}
@@ -190,7 +194,7 @@ export default function Sidebar() {
                       className="h-full w-full object-cover"
                     />
                   ) : user?.displayName || user?.email ? (
-                    <span className="block text-[11px] font-semibold leading-none">
+                    <span className="block text-label font-semibold leading-none">
                       {initials}
                     </span>
                   ) : (
@@ -200,10 +204,10 @@ export default function Sidebar() {
 
                 {expanded && (
                   <div className="min-w-0 overflow-hidden text-left transition-all duration-300 ease-in-out">
-                    <h4 className="truncate text-[13px] font-medium text-[#18181b]">
+                    <h4 className="truncate text-detail font-medium text-[#18181b]">
                       {displayLabel}
                     </h4>
-                    <span className="block truncate text-[11px] text-[#a1a1aa]">
+                    <span className="block truncate text-label text-[#a1a1aa]">
                       {role
                         ? role.charAt(0).toUpperCase() + role.slice(1)
                         : user?.email || ""}
@@ -237,7 +241,7 @@ function SidebarItem({ icon, text, to, active, alert }) {
     <li className="mb-1">
       <Link
         to={to}
-        className={`relative my-px flex items-center rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-all duration-150 ${
+        className={`relative my-px flex items-center rounded-lg px-2.5 py-2 text-detail font-medium transition-all duration-150 ${
           active
             ? "bg-[#fef2f2] text-[#bf2d2d]"
             : "text-[#71717a] hover:bg-[#fafaf8] hover:text-[#18181b]"

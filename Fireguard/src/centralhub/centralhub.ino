@@ -95,12 +95,16 @@ enum AlertLevel {
 // ===================== THRESHOLD STRUCTURE =====================
 struct Thresholds {
   float temp_warning = 40.0;
+  float temp_warning_max = 49.0;
   float temp_alert = 50.0;
   float humidity_warning = 80.0;
+  float humidity_warning_max = 99.0;
   float humidity_alert = 100.0;
   float gas_warning = 1.5;
+  float gas_warning_max = 3.0;
   float gas_alert = 3.0;
   float co_warning = 1.5;
+  float co_warning_max = 3.0;
   float co_alert = 3.0;
   int flame_threshold = 1;
 };
@@ -249,41 +253,83 @@ void syncThresholdsFromFirebase() {
   if (Firebase.RTDB.getJSON(&fbdo, thresholdPath.c_str())) {
     FirebaseJson *json = fbdo.to<FirebaseJson *>();
     FirebaseJsonData data;
+    bool tempWarningMaxLoaded = false;
+    bool humidityWarningMaxLoaded = false;
+    bool gasWarningMaxLoaded = false;
+    bool coWarningMaxLoaded = false;
     
     if (json->get(data, "temperature/warning")) {
       thresholds.temp_warning = data.floatValue;
       Serial.println("Temp Warning: " + String(thresholds.temp_warning));
     }
+    if (json->get(data, "temperature/warningMax")) {
+      thresholds.temp_warning_max = data.floatValue;
+      tempWarningMaxLoaded = true;
+      Serial.println("Temp Warning Max: " + String(thresholds.temp_warning_max));
+    }
     if (json->get(data, "temperature/alert")) {
       thresholds.temp_alert = data.floatValue;
       Serial.println("Temp Alert: " + String(thresholds.temp_alert));
+    }
+    if (!tempWarningMaxLoaded) {
+      float preferredWarningMax = thresholds.temp_alert - 1.0;
+      thresholds.temp_warning_max = thresholds.temp_warning < preferredWarningMax ? preferredWarningMax : thresholds.temp_alert;
+      Serial.println("Temp Warning Max derived: " + String(thresholds.temp_warning_max));
     }
     
     if (json->get(data, "humidity/warning")) {
       thresholds.humidity_warning = data.floatValue;
       Serial.println("Humidity Warning: " + String(thresholds.humidity_warning));
     }
+    if (json->get(data, "humidity/warningMax")) {
+      thresholds.humidity_warning_max = data.floatValue;
+      humidityWarningMaxLoaded = true;
+      Serial.println("Humidity Warning Max: " + String(thresholds.humidity_warning_max));
+    }
     if (json->get(data, "humidity/alert")) {
       thresholds.humidity_alert = data.floatValue;
       Serial.println("Humidity Alert: " + String(thresholds.humidity_alert));
+    }
+    if (!humidityWarningMaxLoaded) {
+      float preferredWarningMax = thresholds.humidity_alert - 1.0;
+      thresholds.humidity_warning_max = thresholds.humidity_warning < preferredWarningMax ? preferredWarningMax : thresholds.humidity_alert;
+      Serial.println("Humidity Warning Max derived: " + String(thresholds.humidity_warning_max));
     }
     
     if (json->get(data, "gas/warning")) {
       thresholds.gas_warning = data.floatValue;
       Serial.println("Gas Warning: " + String(thresholds.gas_warning));
     }
+    if (json->get(data, "gas/warningMax")) {
+      thresholds.gas_warning_max = data.floatValue;
+      gasWarningMaxLoaded = true;
+      Serial.println("Gas Warning Max: " + String(thresholds.gas_warning_max));
+    }
     if (json->get(data, "gas/alert")) {
       thresholds.gas_alert = data.floatValue;
       Serial.println("Gas Alert: " + String(thresholds.gas_alert));
+    }
+    if (!gasWarningMaxLoaded) {
+      thresholds.gas_warning_max = thresholds.gas_alert;
+      Serial.println("Gas Warning Max derived: " + String(thresholds.gas_warning_max));
     }
     
     if (json->get(data, "co/warning")) {
       thresholds.co_warning = data.floatValue;
       Serial.println("CO Warning: " + String(thresholds.co_warning));
     }
+    if (json->get(data, "co/warningMax")) {
+      thresholds.co_warning_max = data.floatValue;
+      coWarningMaxLoaded = true;
+      Serial.println("CO Warning Max: " + String(thresholds.co_warning_max));
+    }
     if (json->get(data, "co/alert")) {
       thresholds.co_alert = data.floatValue;
       Serial.println("CO Alert: " + String(thresholds.co_alert));
+    }
+    if (!coWarningMaxLoaded) {
+      thresholds.co_warning_max = thresholds.co_alert;
+      Serial.println("CO Warning Max derived: " + String(thresholds.co_warning_max));
     }
     
     if (json->get(data, "flame/threshold")) {
@@ -1509,7 +1555,7 @@ void parseReceivedData(String data) {
   Serial.println("\n=== " + getRoomDisplayName(nodeData) + " DATA RECEIVED ===");
   Serial.println("Temperature: " + String(nodeData->temperature) + "°C");
   Serial.println("Humidity: " + String(nodeData->humidity) + "%");
-  Serial.println("Gas and Smoke (MQ2): " + String(nodeData->mq2Value, 2) + " ratio");
+  Serial.println("Gas and Smoke (MQ2): " + String(nodeData->mq2Value, 2) + " ppm");
   Serial.println("CO (MQ7): " + String(nodeData->mq7Value, 2) + " ratio");
   Serial.println("Flame: " + String(nodeData->flameValue ? "DETECTED" : "None"));
 
@@ -1524,13 +1570,13 @@ void evaluateAlertLevel(NodeData* nodeData, NodeAlert* nodeAlert) {
 
   // Check against dynamic thresholds
   bool flameDetected = (nodeData->flameValue >= thresholds.flame_threshold);
-  bool tempWarning = (nodeData->temperature > thresholds.temp_warning);
+  bool tempWarning = (nodeData->temperature > thresholds.temp_warning && nodeData->temperature <= thresholds.temp_warning_max);
   bool tempAlert = (nodeData->temperature > thresholds.temp_alert);
-  bool humidityWarning = (nodeData->humidity > thresholds.humidity_warning);
+  bool humidityWarning = (nodeData->humidity > thresholds.humidity_warning && nodeData->humidity <= thresholds.humidity_warning_max);
   bool humidityAlert = (nodeData->humidity > thresholds.humidity_alert);
-  bool gasWarning = (nodeData->mq2Value > thresholds.gas_warning);
+  bool gasWarning = (nodeData->mq2Value > thresholds.gas_warning && nodeData->mq2Value <= thresholds.gas_warning_max);
   bool gasAlert = (nodeData->mq2Value > thresholds.gas_alert);
-  bool coWarning = (nodeData->mq7Value > thresholds.co_warning);
+  bool coWarning = (nodeData->mq7Value > thresholds.co_warning && nodeData->mq7Value <= thresholds.co_warning_max);
   bool coAlert = (nodeData->mq7Value > thresholds.co_alert);
 
   // Temperature alert timing

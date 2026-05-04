@@ -278,7 +278,7 @@ const RoomTile = ({
 
                 <div className="alarm-row">
                   <div className="alarm-toggle">
-                    <h5 style={{ fontSize: "0.9rem", margin: 0 }}>
+                    <h5 style={{ fontSize: "var(--fg-text-body)", margin: 0 }}>
                       Fire Alarm
                     </h5>
                     <div

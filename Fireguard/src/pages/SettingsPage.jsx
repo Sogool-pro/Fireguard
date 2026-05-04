@@ -18,11 +18,23 @@ import {
   FaUpload,
   FaExclamationTriangle,
   FaLock,
+  FaThermometerHalf,
+  FaSmog,
+  FaWind,
+  FaTint,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import { ref, set, remove, onValue, get } from "firebase/database";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 import { useToast } from "../context/ToastContext";
+import { useThresholds } from "../context/ThresholdContext";
+import {
+  DEFAULT_SENSOR_THRESHOLDS,
+  SENSOR_THRESHOLD_DEFINITIONS,
+  SENSOR_THRESHOLD_ORDER,
+  formatThresholdNumber,
+  normalizeThresholds,
+} from "../utils/sensorThresholds";
 import {
   createSystemBackup,
   downloadBackupFile,
@@ -30,13 +42,98 @@ import {
   restoreSystemBackup,
 } from "../services/backupRestore";
 
+const THRESHOLD_ICONS = {
+  temperature: FaThermometerHalf,
+  gas: FaSmog,
+  co: FaWind,
+  humidity: FaTint,
+};
+
+const SETTINGS_SECTIONS = [
+  { id: "backup", label: "Backup & Restore" },
+  { id: "thresholds", label: "Thresholds" },
+  { id: "rooms", label: "Rooms & Nodes" },
+  { id: "contacts", label: "Emergency Contacts" },
+];
+
+function buildThresholdForm(thresholds) {
+  const normalized = normalizeThresholds(thresholds);
+
+  return SENSOR_THRESHOLD_ORDER.reduce((form, sensorKey) => {
+    form[sensorKey] = {
+      warning: formatThresholdNumber(sensorKey, normalized[sensorKey].warning),
+      warningMax: formatThresholdNumber(
+        sensorKey,
+        normalized[sensorKey].warningMax,
+      ),
+      alert: formatThresholdNumber(sensorKey, normalized[sensorKey].alert),
+    };
+    return form;
+  }, {});
+}
+
+function getSensorUnitLabel(sensorKey) {
+  const unit = SENSOR_THRESHOLD_DEFINITIONS[sensorKey].unit;
+  return unit === "C" ? "°C" : unit;
+}
+
+function parseThresholdForm(form) {
+  return SENSOR_THRESHOLD_ORDER.reduce((thresholds, sensorKey) => {
+    const meta = SENSOR_THRESHOLD_DEFINITIONS[sensorKey];
+    const warning = Number(form[sensorKey]?.warning);
+    const warningMax = Number(form[sensorKey]?.warningMax);
+    const alert = Number(form[sensorKey]?.alert);
+
+    if (
+      !Number.isFinite(warning) ||
+      !Number.isFinite(warningMax) ||
+      !Number.isFinite(alert)
+    ) {
+      throw new Error(`${meta.label} thresholds must be valid numbers.`);
+    }
+
+    if (warning < 0 || warningMax < 0 || alert < 0) {
+      throw new Error(`${meta.label} thresholds cannot be negative.`);
+    }
+
+    if (warning >= warningMax) {
+      throw new Error(
+        `${meta.label} warning minimum must be lower than its warning maximum.`,
+      );
+    }
+
+    if (warningMax > alert) {
+      throw new Error(
+        `${meta.label} warning maximum must not be higher than its alert threshold.`,
+      );
+    }
+
+    thresholds[sensorKey] = { warning, warningMax, alert };
+    return thresholds;
+  }, {});
+}
+
 export default function SettingsPage() {
   const { rooms, setRooms } = useRoom();
   const { showToast } = useToast();
+  const {
+    thresholds,
+    loading: thresholdsLoading,
+    error: thresholdsLoadError,
+    saveThresholds,
+  } = useThresholds();
   const backupFileInputRef = useRef(null);
   const [userRole, setUserRole] = useState(null);
   const [backupBusy, setBackupBusy] = useState(false);
   const [restoreBusy, setRestoreBusy] = useState(false);
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState("thresholds");
+  const [thresholdForm, setThresholdForm] = useState(() =>
+    buildThresholdForm(DEFAULT_SENSOR_THRESHOLDS),
+  );
+  const [thresholdDirty, setThresholdDirty] = useState(false);
+  const [thresholdSaving, setThresholdSaving] = useState(false);
+  const [thresholdError, setThresholdError] = useState("");
   const [passwordGate, setPasswordGate] = useState({
     open: false,
     title: "",
@@ -163,6 +260,50 @@ export default function SettingsPage() {
     );
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!thresholdDirty) {
+      setThresholdForm(buildThresholdForm(thresholds));
+    }
+  }, [thresholdDirty, thresholds]);
+
+  const updateThresholdField = (sensorKey, field, value) => {
+    setThresholdDirty(true);
+    setThresholdError("");
+    setThresholdForm((prev) => ({
+      ...prev,
+      [sensorKey]: {
+        ...prev[sensorKey],
+        [field]: value,
+      },
+    }));
+  };
+
+  const resetThresholdForm = () => {
+    setThresholdDirty(true);
+    setThresholdError("");
+    setThresholdForm(buildThresholdForm(DEFAULT_SENSOR_THRESHOLDS));
+  };
+
+  const saveThresholdSettings = async () => {
+    try {
+      const parsedThresholds = parseThresholdForm(thresholdForm);
+      setThresholdSaving(true);
+      setThresholdError("");
+
+      await saveThresholds(parsedThresholds);
+      setThresholdDirty(false);
+      setThresholdForm(buildThresholdForm(parsedThresholds));
+      showToast("Sensor thresholds saved.", "success");
+    } catch (err) {
+      console.error("Failed to save thresholds:", err);
+      const message = err.message || "Failed to save sensor thresholds.";
+      setThresholdError(message);
+      showToast(message, "error");
+    } finally {
+      setThresholdSaving(false);
+    }
+  };
 
   const saveName = async (nodeId) => {
     const name = edited[nodeId] ?? "";
@@ -557,365 +698,552 @@ export default function SettingsPage() {
     return "CONTACT";
   };
 
+  const thresholdStatusMessage =
+    thresholdError ||
+    (thresholdsLoadError
+      ? "Unable to load saved thresholds. Defaults are shown."
+      : "");
+  const selectedSettingsSection = SETTINGS_SECTIONS.some(
+    (section) => section.id === activeSettingsSection,
+  )
+    ? activeSettingsSection
+    : "thresholds";
+
   return (
     <div className="fg-page">
-      <div className="fg-page-head">
-        <div>
-          <div className="fg-eyebrow">System Control</div>
-          <div className="fg-heading">Settings</div>
-          <div className="fg-description">
-            Configure paired sensor nodes, response contacts, and database
-            backup tools.
-          </div>
-        </div>
-      </div>
+      <h1 className="mb-4 text-base font-semibold tracking-[-0.02em] text-slate-950">
+        System Settings
+      </h1>
 
-      {/* Admin Only Section - Room Management */}
       {userRole === "admin" && (
         <>
-          <div className="control-strip">
-            <div className="control-tile">
-              <div className="control-label">Installed Rooms</div>
-              <div className="control-value">{rooms.length}</div>
-              <div className="control-sub">Auto-registered sensor nodes</div>
-            </div>
-            <div className="control-tile">
-              <div className="control-label">Emergency Contacts</div>
-              <div className="control-value">{phoneNumbers.length}</div>
-              <div className="control-sub">SMS and response numbers</div>
-            </div>
-            <div className="control-tile">
-              <div className="control-label">Backup Status</div>
-              <div className="control-value">
-                <span className="h-2 w-2 rounded-full bg-[#16803c]" />
-                Ready
-              </div>
-              <div className="control-sub">Password verification enabled</div>
-            </div>
-          </div>
+          <div className="grid gap-4 lg:grid-cols-[190px_minmax(0,1fr)]">
+            <aside
+              className="h-fit rounded-[11px] border border-[#e2ddd8] bg-white p-2 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+              aria-label="Settings sections"
+            >
+              {SETTINGS_SECTIONS.map((item) => {
+                const active = selectedSettingsSection === item.id;
 
-          <div className="settings-grid-v2">
-            <section className="settings-card-v2">
-              <div className="fg-card-head">
-                <div className="flex items-start gap-4">
-                  <div className="fg-icon-box">
-                    <FaHome className="text-lg" />
-                  </div>
-                  <div>
-                    <h3 className="fg-card-title">
-                      Room Management
-                    </h3>
-                    <p className="fg-card-sub">
-                      Configure and manage your monitored rooms
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="fg-card-body space-y-3">
-                {rooms.length === 0 && (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
-                    No rooms found.
-                  </div>
-                )}
-
-                {rooms.map((r, idx) => {
-                  const statusMeta = getRoomStatusMeta(r);
-
-                  return (
-                    <div
-                      key={r.nodeId || idx}
-                      className="rounded-[26px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md"
-                    >
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div
-                            className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[18px] ${statusMeta.iconWrap}`}
-                          >
-                            <FaHome className="text-xl" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            {editingMap[r.nodeId] ? (
-                              <input
-                                type="text"
-                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base font-semibold uppercase tracking-tight text-slate-950 outline-none transition focus:border-slate-400 focus:bg-white"
-                                value={edited[r.nodeId] ?? r.roomName}
-                                onChange={(e) =>
-                                  setEdited((s) => ({
-                                    ...s,
-                                    [r.nodeId]: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <div className="truncate text-base font-semibold uppercase tracking-tight text-slate-950">
-                                {r.roomName}
-                              </div>
-                            )}
-
-                            <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                              <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusMeta.tone}`}
-                              >
-                                <span
-                                  className={`h-2 w-2 rounded-full ${statusMeta.dot}`}
-                                />
-                                {statusMeta.label}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                Node ID:{" "}
-                                <span className="font-medium text-slate-700">
-                                  {r.nodeId || "unknown"}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          {editingMap[r.nodeId] ? (
-                            <>
-                              <button
-                                className="rounded-xl bg-slate-950 px-3.5 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800"
-                                onClick={async () => {
-                                  await saveName(r.nodeId);
-                                  setEditingMap((s) => ({
-                                    ...s,
-                                    [r.nodeId]: false,
-                                  }));
-                                }}
-                              >
-                                Save
-                              </button>
-                              <button
-                                className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                                onClick={() => {
-                                  setEdited((s) => ({
-                                    ...s,
-                                    [r.nodeId]: r.roomName,
-                                  }));
-                                  setEditingMap((s) => ({
-                                    ...s,
-                                    [r.nodeId]: false,
-                                  }));
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                                onClick={() =>
-                                  setEditingMap((s) => ({
-                                    ...s,
-                                    [r.nodeId]: true,
-                                  }))
-                                }
-                                aria-label={`Edit ${r.roomName}`}
-                              >
-                                <FaEdit className="text-xs" />
-                              </button>
-                              <button
-                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                                onClick={() =>
-                                  showConfirm({
-                                    title: r.archived
-                                      ? "Unarchive room"
-                                      : "Archive room",
-                                    message: r.archived
-                                      ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
-                                      : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
-                                    onConfirm: () => toggleArchive(r.nodeId),
-                                  })
-                                }
-                                aria-label={`${r.archived ? "Unarchive" : "Archive"} ${r.roomName}`}
-                              >
-                                <FaArchive className="text-xs" />
-                              </button>
-                              <button
-                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-500 transition hover:bg-red-50"
-                                onClick={() =>
-                                  showConfirm({
-                                    title: "Remove room",
-                                    message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
-                                    onConfirm: removeRoom(r.nodeId),
-                                    showDeleteOption: true,
-                                  })
-                                }
-                                aria-label={`Delete ${r.roomName}`}
-                              >
-                                <FaTrash className="text-xs" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="settings-card-v2">
-              <div className="fg-card-head">
-                <div className="flex items-start gap-4">
-                  <div className="fg-icon-box red">
-                    <FaPhone className="text-lg" />
-                  </div>
-                  <div>
-                    <h3 className="fg-card-title">
-                      Emergency Contacts
-                    </h3>
-                    <p className="fg-card-sub">
-                      Manage SMS notifications and emergency hotlines
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  className="fg-btn fg-btn-primary"
-                  onClick={openAddPhoneModal}
-                >
-                  <FaPlus className="text-sm" />
-                  Add Number
-                </button>
-              </div>
-
-              <div className="fg-card-body space-y-3">
-                {phoneNumbers.length === 0 && (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
-                    No phone numbers found.
-                  </div>
-                )}
-
-                {phoneNumbers.map((phone) => (
-                  <div
-                    key={phone.id}
-                    className="rounded-[26px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md"
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveSettingsSection(item.id)}
+                    className={`mb-px block w-full rounded-[7px] px-2.5 py-2 text-left text-micro transition ${
+                      active
+                        ? "bg-red-50 font-medium text-red-600"
+                        : "font-normal text-slate-600 hover:bg-[#f6f4f1] hover:text-slate-950"
+                    }`}
                   >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[18px] bg-red-50 text-red-500">
-                          <FaPhone className="text-base" />
-                        </div>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </aside>
 
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="truncate text-[15px] font-semibold tracking-tight text-slate-950">
-                              {phone.label}
-                            </div>
-                            <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-semibold tracking-[0.16em] text-slate-500">
-                              {getPhoneBadge(phone)}
+            <div className="min-w-0">
+              {selectedSettingsSection === "thresholds" && (
+                <section className="rounded-[11px] border border-[#e2ddd8] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                  <div>
+                    <h2 className="text-sm font-semibold leading-tight tracking-[-0.015em] text-slate-950">
+                      Sensor Thresholds
+                    </h2>
+                    <p className="mt-1 text-label leading-4 text-slate-500">
+                      Define warning and alert levels for each sensor type
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-2.5 xl:grid-cols-2">
+                    {SENSOR_THRESHOLD_ORDER.map((sensorKey) => {
+                      const meta = SENSOR_THRESHOLD_DEFINITIONS[sensorKey];
+                      const Icon = THRESHOLD_ICONS[sensorKey];
+                      const unitLabel = getSensorUnitLabel(sensorKey);
+
+                      return (
+                        <div
+                          key={sensorKey}
+                          className="rounded-[9px] border border-[#e2ddd8] bg-[#f6f4f1] p-3"
+                        >
+                          <div className="mb-2.5 flex items-center gap-1.5 text-label font-medium text-slate-950">
+                            <Icon
+                              className={`text-micro ${
+                                sensorKey === "temperature"
+                                  ? "text-fuchsia-500"
+                                  : sensorKey === "humidity"
+                                    ? "text-sky-500"
+                                    : "text-violet-300"
+                              }`}
+                            />
+                            <span>
+                              {meta.label} ({unitLabel})
                             </span>
                           </div>
-                          <div className="mt-1 text-xs font-medium text-slate-600">
-                            {phone.number}
+
+                          <div className="grid gap-x-2 gap-y-2 sm:grid-cols-2">
+                            <label className="block">
+                              <span className="mb-1 block font-mono text-micro uppercase tracking-[0.06em] text-slate-400">
+                                Warning Min
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                step={meta.precision > 0 ? "0.1" : "1"}
+                                value={thresholdForm[sensorKey]?.warning ?? ""}
+                                onChange={(event) =>
+                                  updateThresholdField(
+                                    sensorKey,
+                                    "warning",
+                                    event.target.value,
+                                  )
+                                }
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1.5 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                aria-label={`${meta.label} warning minimum`}
+                              />
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-1 block font-mono text-micro uppercase tracking-[0.06em] text-slate-400">
+                                Warning Max
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                step={meta.precision > 0 ? "0.1" : "1"}
+                                value={
+                                  thresholdForm[sensorKey]?.warningMax ?? ""
+                                }
+                                onChange={(event) =>
+                                  updateThresholdField(
+                                    sensorKey,
+                                    "warningMax",
+                                    event.target.value,
+                                  )
+                                }
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1.5 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                aria-label={`${meta.label} warning maximum`}
+                              />
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-1 block font-mono text-micro uppercase tracking-[0.06em] text-slate-400">
+                                Alert Above
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                step={meta.precision > 0 ? "0.1" : "1"}
+                                value={thresholdForm[sensorKey]?.alert ?? ""}
+                                onChange={(event) =>
+                                  updateThresholdField(
+                                    sensorKey,
+                                    "alert",
+                                    event.target.value,
+                                  )
+                                }
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1.5 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                aria-label={`${meta.label} alert threshold`}
+                              />
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-1 block font-mono text-micro uppercase tracking-[0.06em] text-slate-400">
+                                Unit
+                              </span>
+                              <input
+                                type="text"
+                                readOnly
+                                value={unitLabel}
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1.5 font-mono text-micro text-slate-950 outline-none"
+                                aria-label={`${meta.label} unit`}
+                              />
+                            </label>
                           </div>
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                          onClick={() => openEditPhoneModal(phone)}
-                          aria-label={`Edit ${phone.label}`}
-                        >
-                          <FaEdit className="text-xs" />
-                        </button>
-                        <button
-                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-500 transition hover:bg-red-50"
-                          onClick={() => deletePhoneNumber(phone.id)}
-                          aria-label={`Delete ${phone.label}`}
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
+                  {thresholdStatusMessage && (
+                    <div className="mt-3 rounded-[7px] border border-red-100 bg-red-50 px-3 py-2 text-label font-medium text-red-700">
+                      {thresholdStatusMessage}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      className="inline-flex rounded-[6px] border border-[#e2ddd8] bg-white px-3 py-1.5 text-micro font-medium text-slate-600 transition hover:bg-[#f6f4f1] disabled:opacity-50"
+                      onClick={resetThresholdForm}
+                      disabled={thresholdSaving}
+                    >
+                      Reset Defaults
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex rounded-[6px] border border-red-600 bg-red-600 px-3 py-1.5 text-micro font-medium text-white transition hover:border-red-700 hover:bg-red-700 disabled:opacity-50"
+                      onClick={saveThresholdSettings}
+                      disabled={thresholdSaving || thresholdsLoading}
+                    >
+                      {thresholdSaving ? "Saving..." : "Save Thresholds"}
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {selectedSettingsSection === "backup" && (
+                <div className="space-y-4">
+                  <div className="control-strip">
+                    <div className="control-tile">
+                      <div className="control-label">Installed Rooms</div>
+                      <div className="control-value">{rooms.length}</div>
+                      <div className="control-sub">
+                        Auto-registered sensor nodes
+                      </div>
+                    </div>
+                    <div className="control-tile">
+                      <div className="control-label">Emergency Contacts</div>
+                      <div className="control-value">{phoneNumbers.length}</div>
+                      <div className="control-sub">
+                        SMS and response numbers
+                      </div>
+                    </div>
+                    <div className="control-tile">
+                      <div className="control-label">Backup Status</div>
+                      <div className="control-value">
+                        <span className="h-2 w-2 rounded-full bg-[#16803c]" />
+                        Ready
+                      </div>
+                      <div className="control-sub">
+                        Password verification enabled
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          </div>
 
-          <section className="settings-card-v2 full mt-[18px]">
-            <div className="fg-card-head">
-              <div className="flex items-start gap-4">
-                <div className="fg-icon-box">
-                  <FaDatabase className="text-lg" />
+                  <section className="settings-card-v2">
+                    <div className="fg-card-head">
+                      <div className="flex items-start gap-4">
+                        <div className="fg-icon-box">
+                          <FaDatabase className="text-lg" />
+                        </div>
+                        <div>
+                          <h3 className="fg-card-title">Backup & Restore</h3>
+                          <p className="fg-card-sub">
+                            Export or restore system database records.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
+                      <div className="flex flex-col justify-between gap-4 p-4">
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                            Download Backup
+                          </h4>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            Includes Realtime Database data and Firestore user
+                            records.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleDownloadBackup}
+                          disabled={backupBusy || restoreBusy}
+                          className="fg-btn fg-btn-dark w-full sm:w-fit"
+                        >
+                          <FaDownload className="text-sm" />
+                          {backupBusy ? "Preparing..." : "Download Backup"}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col justify-between gap-4 p-4">
+                        <input
+                          ref={backupFileInputRef}
+                          type="file"
+                          accept=".json,application/json"
+                          className="hidden"
+                          onChange={handleRestoreFileChange}
+                        />
+
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                            Restore Backup
+                          </h4>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            Imports a FireGuard JSON backup file.
+                          </p>
+                          <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                            <FaExclamationTriangle className="mt-1 flex-shrink-0" />
+                            <span>
+                              Restore replaces live database values. Firebase
+                              Auth accounts and passwords are not changed.
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => backupFileInputRef.current?.click()}
+                          disabled={backupBusy || restoreBusy}
+                          className="fg-btn fg-btn-primary w-full sm:w-fit"
+                        >
+                          <FaUpload className="text-sm" />
+                          {restoreBusy ? "Restoring..." : "Choose Backup File"}
+                        </button>
+                      </div>
+                    </div>
+                  </section>
                 </div>
-                <div>
-                  <h3 className="fg-card-title">
-                    Backup & Restore
-                  </h3>
-                  <p className="fg-card-sub">
-                    Export or restore system database records.
-                  </p>
-                </div>
-              </div>
-            </div>
+              )}
 
-            <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
-              <div className="flex flex-col justify-between gap-5 p-6">
-                <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-700">
-                    Download Backup
-                  </h4>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Includes Realtime Database data and Firestore user records.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleDownloadBackup}
-                  disabled={backupBusy || restoreBusy}
-                  className="fg-btn fg-btn-dark w-full sm:w-fit"
-                >
-                  <FaDownload className="text-sm" />
-                  {backupBusy ? "Preparing..." : "Download Backup"}
-                </button>
-              </div>
-
-              <div className="flex flex-col justify-between gap-5 p-6">
-                <input
-                  ref={backupFileInputRef}
-                  type="file"
-                  accept=".json,application/json"
-                  className="hidden"
-                  onChange={handleRestoreFileChange}
-                />
-
-                <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-700">
-                    Restore Backup
-                  </h4>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Imports a FireGuard JSON backup file.
-                  </p>
-                  <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                    <FaExclamationTriangle className="mt-1 flex-shrink-0" />
-                    <span>
-                      Restore replaces live database values. Firebase Auth
-                      accounts and passwords are not changed.
-                    </span>
+              {selectedSettingsSection === "rooms" && (
+                <section className="settings-card-v2">
+                  <div className="fg-card-head">
+                    <div className="flex items-start gap-4">
+                      <div className="fg-icon-box">
+                        <FaHome className="text-lg" />
+                      </div>
+                      <div>
+                        <h3 className="fg-card-title">Room Management</h3>
+                        <p className="fg-card-sub">
+                          Configure and manage your monitored rooms
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() => backupFileInputRef.current?.click()}
-                  disabled={backupBusy || restoreBusy}
-                  className="fg-btn fg-btn-primary w-full sm:w-fit"
-                >
-                  <FaUpload className="text-sm" />
-                  {restoreBusy ? "Restoring..." : "Choose Backup File"}
-                </button>
-              </div>
+                  <div className="fg-card-body space-y-3">
+                    {rooms.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-xs text-slate-500">
+                        No rooms found.
+                      </div>
+                    )}
+
+                    {rooms.map((r, idx) => {
+                      const statusMeta = getRoomStatusMeta(r);
+
+                      return (
+                        <div
+                          key={r.nodeId || idx}
+                          className="rounded-[18px] border border-slate-200 bg-white px-3 py-3 shadow-sm transition-shadow hover:shadow-md"
+                        >
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div
+                                className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[14px] ${statusMeta.iconWrap}`}
+                              >
+                                <FaHome className="text-base" />
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                {editingMap[r.nodeId] ? (
+                                  <input
+                                    type="text"
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-tight text-slate-950 outline-none transition focus:border-slate-400 focus:bg-white"
+                                    value={edited[r.nodeId] ?? r.roomName}
+                                    onChange={(e) =>
+                                      setEdited((s) => ({
+                                        ...s,
+                                        [r.nodeId]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                ) : (
+                                  <div className="truncate text-xs font-semibold uppercase tracking-tight text-slate-950">
+                                    {r.roomName}
+                                  </div>
+                                )}
+
+                                <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-semibold uppercase tracking-[0.14em] ${statusMeta.tone}`}
+                                  >
+                                    <span
+                                      className={`h-2 w-2 rounded-full ${statusMeta.dot}`}
+                                    />
+                                    {statusMeta.label}
+                                  </span>
+                                  <span className="text-label text-slate-500">
+                                    Node ID:{" "}
+                                    <span className="font-medium text-slate-700">
+                                      {r.nodeId || "unknown"}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              {editingMap[r.nodeId] ? (
+                                <>
+                                  <button
+                                    className="rounded-lg bg-slate-950 px-3 py-2 text-label font-semibold text-white transition hover:bg-slate-800"
+                                    onClick={async () => {
+                                      await saveName(r.nodeId);
+                                      setEditingMap((s) => ({
+                                        ...s,
+                                        [r.nodeId]: false,
+                                      }));
+                                    }}
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    className="rounded-lg border border-slate-200 px-3 py-2 text-label font-semibold text-slate-600 transition hover:bg-slate-50"
+                                    onClick={() => {
+                                      setEdited((s) => ({
+                                        ...s,
+                                        [r.nodeId]: r.roomName,
+                                      }));
+                                      setEditingMap((s) => ({
+                                        ...s,
+                                        [r.nodeId]: false,
+                                      }));
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                                    onClick={() =>
+                                      setEditingMap((s) => ({
+                                        ...s,
+                                        [r.nodeId]: true,
+                                      }))
+                                    }
+                                    aria-label={`Edit ${r.roomName}`}
+                                  >
+                                    <FaEdit className="text-xs" />
+                                  </button>
+                                  <button
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                                    onClick={() =>
+                                      showConfirm({
+                                        title: r.archived
+                                          ? "Unarchive room"
+                                          : "Archive room",
+                                        message: r.archived
+                                          ? `Unarchive ${r.roomName}? It will reappear on the dashboard.`
+                                          : `Archive ${r.roomName}? It will be hidden from the dashboard but not deleted.`,
+                                        onConfirm: () =>
+                                          toggleArchive(r.nodeId),
+                                      })
+                                    }
+                                    aria-label={`${r.archived ? "Unarchive" : "Archive"} ${r.roomName}`}
+                                  >
+                                    <FaArchive className="text-xs" />
+                                  </button>
+                                  <button
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50"
+                                    onClick={() =>
+                                      showConfirm({
+                                        title: "Remove room",
+                                        message: `Remove ${r.roomName}? Choose whether to also delete its sensor data and related alerts. This cannot be undone.`,
+                                        onConfirm: removeRoom(r.nodeId),
+                                        showDeleteOption: true,
+                                      })
+                                    }
+                                    aria-label={`Delete ${r.roomName}`}
+                                  >
+                                    <FaTrash className="text-xs" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {selectedSettingsSection === "contacts" && (
+                <section className="settings-card-v2">
+                  <div className="fg-card-head">
+                    <div className="flex items-start gap-4">
+                      <div className="fg-icon-box red">
+                        <FaPhone className="text-lg" />
+                      </div>
+                      <div>
+                        <h3 className="fg-card-title">Emergency Contacts</h3>
+                        <p className="fg-card-sub">
+                          Manage SMS notifications and emergency hotlines
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      className="fg-btn fg-btn-primary"
+                      onClick={openAddPhoneModal}
+                    >
+                      <FaPlus className="text-sm" />
+                      Add Number
+                    </button>
+                  </div>
+
+                  <div className="fg-card-body space-y-3">
+                    {phoneNumbers.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-xs text-slate-500">
+                        No phone numbers found.
+                      </div>
+                    )}
+
+                    {phoneNumbers.map((phone) => (
+                      <div
+                        key={phone.id}
+                        className="rounded-[18px] border border-slate-200 bg-white px-3 py-3 shadow-sm transition-shadow hover:shadow-md"
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[14px] bg-red-50 text-red-500">
+                              <FaPhone className="text-sm" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="truncate text-xs font-semibold tracking-tight text-slate-950">
+                                  {phone.label}
+                                </div>
+                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-micro font-semibold tracking-[0.14em] text-slate-500">
+                                  {getPhoneBadge(phone)}
+                                </span>
+                              </div>
+                              <div className="mt-1 text-label font-medium text-slate-600">
+                                {phone.number}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                              onClick={() => openEditPhoneModal(phone)}
+                              aria-label={`Edit ${phone.label}`}
+                            >
+                              <FaEdit className="text-xs" />
+                            </button>
+                            <button
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50"
+                              onClick={() => deletePhoneNumber(phone.id)}
+                              aria-label={`Delete ${phone.label}`}
+                            >
+                              <FaTrash className="text-xs" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
-          </section>
+          </div>
 
           {/* Phone Number Modal */}
           {phoneModal.open && (

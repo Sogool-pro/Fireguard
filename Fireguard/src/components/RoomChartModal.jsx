@@ -14,7 +14,7 @@ import {
 
 const HISTORY_TICK = {
   fill: "#a1a1aa",
-  fontFamily: "DM Mono, monospace",
+  fontFamily: "var(--fg-mono)",
   fontSize: 10,
 };
 const HISTORY_AXIS = { stroke: "#e4e4e0" };

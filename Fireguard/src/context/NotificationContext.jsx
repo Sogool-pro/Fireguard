@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useRoom } from "./RoomContext";
+import { useThresholds } from "./ThresholdContext";
 import { db } from "../firebase";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
+import { isRoomAlert, isRoomWarning } from "../utils/sensorThresholds";
 
 const NotificationContext = createContext();
 
@@ -18,22 +20,13 @@ export function NotificationProvider({ children }) {
   const [latestLogTime, setLatestLogTime] = useState(null);
   const location = useLocation();
   const { rooms } = useRoom();
+  const { thresholds } = useThresholds();
 
   // Check for blinking rooms in dashboard
   useEffect(() => {
     const hasBlinkingRooms = rooms.some((room) => {
       if (room.status !== "Active") return false;
-      if (room.fire) return true;
-      // Alarm thresholds per design: Temp >55, Smoke >600, CO >70
-      const isFire =
-        room.temperature > 55 || room.smoke > 600 || room.carbonMonoxide > 70;
-      // Warning thresholds per design: Temp 41-55, Smoke 301-600, CO 36-70, Humidity 86-95
-      const isWarning =
-        (room.temperature > 40 && room.temperature <= 55) ||
-        (room.smoke > 300 && room.smoke <= 600) ||
-        (room.carbonMonoxide > 35 && room.carbonMonoxide <= 70) ||
-        (room.humidity > 85 && room.humidity <= 95);
-      return isFire || isWarning;
+      return isRoomAlert(room, thresholds) || isRoomWarning(room, thresholds);
     });
 
     if (hasBlinkingRooms && location.pathname !== "/") {
@@ -42,7 +35,7 @@ export function NotificationProvider({ children }) {
       setDashboardAlert(false);
       setLastViewedDashboard(Date.now());
     }
-  }, [rooms, location.pathname]);
+  }, [rooms, location.pathname, thresholds]);
 
   // Monitor logs for new entries
   useEffect(() => {

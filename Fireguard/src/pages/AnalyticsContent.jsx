@@ -249,7 +249,7 @@ const ANALYTICS_FALLBACK_DELAY = 5000;
 const chartMargin = { top: 4, right: 12, bottom: 0, left: -12 };
 const chartTick = {
   fill: "#a1a1aa",
-  fontFamily: "DM Mono, monospace",
+  fontFamily: "var(--fg-mono)",
   fontSize: 10,
 };
 const chartAxisLine = { stroke: "#e4e4e0" };
@@ -267,7 +267,7 @@ const chartLegendFormatter = (value) => (
   <span
     style={{
       color: "#71717a",
-      fontFamily: "DM Mono, monospace",
+      fontFamily: "var(--fg-mono)",
       fontSize: 11,
     }}
   >

@@ -110,7 +110,7 @@ export default function ProfilePage() {
                 {displayLabel}
               </div>
               <div className="mt-1 truncate text-xs text-[#71717a]">{email}</div>
-              <div className="mt-2 inline-flex rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[#bf2d2d]">
+              <div className="mt-2 inline-flex rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-1 font-mono text-micro uppercase tracking-[0.08em] text-[#bf2d2d]">
                 {userRole}
               </div>
             </div>
@@ -218,7 +218,7 @@ export default function ProfilePage() {
                 <p>
                   Your account is used in manual entries and system records.
                 </p>
-                <div className="inline-flex rounded-full border border-[#86efac] bg-[#f0fdf4] px-3 py-2 font-mono text-[11px] text-[#16803c]">
+                <div className="inline-flex rounded-full border border-[#86efac] bg-[#f0fdf4] px-3 py-2 font-mono text-label text-[#16803c]">
                   Active
                 </div>
               </div>
