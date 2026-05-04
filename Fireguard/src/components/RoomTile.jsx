@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Clock, Home, Power } from "lucide-react";
+import React from "react";
+import { Home, Power } from "lucide-react";
 import { useRoom } from "../context/RoomContext";
 import { useRoomChartModal } from "../context/RoomChartModalContext";
 
@@ -75,22 +75,7 @@ export default function RoomTile(props) {
   const { toggleRoomSilence } = useRoom();
   const { showRoomChart } = useRoomChartModal();
   const room = props;
-  const [timeUntilOffline, setTimeUntilOffline] = useState(60);
   const visual = getRoomVisualState(room);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = Date.now();
-      const offlineThreshold = 60000;
-      const timeSinceUpdate = now - (room.lastUpdated || now);
-      const remainingTime = Math.max(
-        0,
-        Math.ceil((offlineThreshold - timeSinceUpdate) / 1000),
-      );
-      setTimeUntilOffline(remainingTime);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [room.lastUpdated]);
 
   const handlePowerClick = (event) => {
     event.stopPropagation();
@@ -178,13 +163,9 @@ export default function RoomTile(props) {
       </div>
 
       {!room.isOffline && (
-        <div className="flex items-center justify-between gap-2 border-t border-[#eeeeeb] bg-white px-[18px] py-2 font-mono text-[10px] text-[#a1a1aa]">
+        <div className="border-t border-[#eeeeeb] bg-white px-[18px] py-2 font-mono text-[10px] text-[#a1a1aa]">
           <span className="truncate">
             Last update: {room.sensorTimestampString || "N/A"}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#fafaf8] px-2 py-1 text-[#71717a]">
-            <Clock className="h-3 w-3" />
-            {timeUntilOffline}s
           </span>
         </div>
       )}

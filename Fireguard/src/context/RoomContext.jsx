@@ -14,6 +14,11 @@ export function useRoom() {
   return useContext(RoomContext);
 }
 
+function didNodeTimeout(sensor) {
+  const alertMessage = String(sensor?.alert_message || "").toLowerCase();
+  return sensor?.active === false || alertMessage.includes("node timeout");
+}
+
 export function RoomProvider({ children }) {
   const [rooms, setRooms] = useState([]);
   const [buzzerOn, setBuzzerOn] = useState(false);
@@ -26,7 +31,7 @@ export function RoomProvider({ children }) {
       const data = snapshot.val() || {};
       const now = Date.now();
       const roomsArr = Object.entries(data).map(([node, sensor]) => {
-        // Parse the sensor's timestamp to detect actual offline status
+        // Keep the hub timestamp for display/history; offline status comes from the hub timeout payload.
         let sensorTimestamp = now;
         if (sensor.timestamp) {
           // Parse "YYYY-MM-DD HH:mm:ss" format
@@ -39,33 +44,36 @@ export function RoomProvider({ children }) {
         }
 
         const sensorSilenced = !!sensor.silenced;
+        const isOffline = didNodeTimeout(sensor);
+        const isSilenced = isOffline ? true : sensorSilenced;
 
         return {
           // include the node id so other parts (settings) can reference it
           nodeId: node,
           // roomName will be replaced below if a custom name exists
           roomName: `ROOM NO. ${node.replace("NODE", "")}`,
-          temperature: sensor.temperature ?? 0,
-          humidity: sensor.humidity ?? 0,
-          smoke: sensor.Gas_and_Smoke ?? 0,
-          carbonMonoxide: sensor.carbon_monoxide ?? 0,
-          flame: sensor.flame ?? 0,
+          temperature: isOffline ? 0 : sensor.temperature ?? 0,
+          humidity: isOffline ? 0 : sensor.humidity ?? 0,
+          smoke: isOffline ? 0 : sensor.Gas_and_Smoke ?? 0,
+          carbonMonoxide: isOffline ? 0 : sensor.carbon_monoxide ?? 0,
+          flame: isOffline ? 0 : sensor.flame ?? 0,
           fire:
-            sensor.flame === 1 ||
-            (sensor.alert_level &&
-              sensor.alert_level.toLowerCase() === "alert"),
-          status: sensorSilenced ? "Silenced" : "Active",
+            !isOffline &&
+            (sensor.flame === 1 ||
+              (sensor.alert_level &&
+                sensor.alert_level.toLowerCase() === "alert")),
+          status: isOffline ? "Offline" : sensorSilenced ? "Silenced" : "Active",
           alert_level: sensor.alert_level,
           alert_message: sensor.alert_message,
-          silenced: sensorSilenced,
+          silenced: isSilenced,
           lastUpdated: sensorTimestamp,
-          isOffline: false,
+          isOffline,
           sensorTimestampString: sensor.timestamp,
         };
       });
       // If there are custom room names loaded, apply them
       setRooms((prev) => {
-        // try to preserve any previous mapping from nodeId to custom names and offline state
+        // try to preserve any previous mapping from nodeId to custom names
         return roomsArr.map((r) => {
           const existing = prev.find((p) => p.nodeId === r.nodeId);
 
@@ -74,80 +82,13 @@ export function RoomProvider({ children }) {
               ...r,
               roomName: existing.customName || r.roomName,
               customName: existing.customName,
-              // IMPORTANT: Preserve the offline state set by the offline detection logic
-              isOffline: existing.isOffline,
-              status: existing.isOffline
-                ? "Offline"
-                : r.silenced
-                  ? "Silenced"
-                  : "Active",
             };
           }
-          return {
-            ...r,
-            status: r.silenced ? "Silenced" : "Active",
-          };
+          return r;
         });
       });
     });
     return () => unsub();
-  }, []);
-
-  // Check for offline rooms (no update for 1 minute)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const OFFLINE_THRESHOLD = 60000; // 1 minute in milliseconds
-      setRooms((current) => {
-        let changed = false;
-        const nextRooms = current.map((room) => {
-          const timeSinceUpdate = now - (room.lastUpdated || now);
-          const isNowOffline = timeSinceUpdate > OFFLINE_THRESHOLD;
-
-          // If the room just went offline, mark it Offline and zero readings
-          if (isNowOffline && !room.isOffline) {
-            changed = true;
-            // Auto-silence the room in Firebase when it goes offline
-            if (room.nodeId) {
-              update(ref(db, `sensor_data/${room.nodeId}`), {
-                silenced: true,
-              }).catch((err) =>
-                console.error("Failed to silence offline room:", err),
-              );
-            }
-
-            return {
-              ...room,
-              isOffline: true,
-              status: "Offline",
-              temperature: 0,
-              humidity: 0,
-              smoke: 0,
-              carbonMonoxide: 0,
-              flame: 0,
-              fire: false,
-              silenced: true,
-            };
-          }
-
-          // If the room came back online, clear the offline flag and restore status
-          // (actual sensor values will be overwritten by the realtime listener)
-          if (!isNowOffline && room.isOffline) {
-            changed = true;
-            return {
-              ...room,
-              isOffline: false,
-              status: room.silenced ? "Silenced" : "Active",
-            };
-          }
-
-          return room;
-        });
-
-        return changed ? nextRooms : current;
-      });
-    }, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
   }, []);
 
   // Listen for custom room names under 'room_names' and merge into rooms
