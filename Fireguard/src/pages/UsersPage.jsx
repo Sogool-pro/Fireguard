@@ -53,7 +53,13 @@ function formatDate(ts) {
   if (!ts) return "-";
   try {
     const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString();
+    return d.toLocaleString(undefined, {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   } catch {
     return String(ts);
   }
@@ -349,51 +355,54 @@ export default function UsersPage() {
             {filtered.map((u) => (
               <article
                 key={u.id}
-                className="flex min-h-[172px] items-start gap-3.5 rounded-xl border border-[rgba(24,24,27,0.075)] bg-white/95 p-5 shadow-[0_12px_28px_rgba(15,23,42,0.055)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.09)]"
+                className="flex min-h-[138px] flex-col overflow-hidden rounded-xl border border-[rgba(24,24,27,0.075)] bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.055)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.09)]"
               >
-                <div
-                  className="flex h-12 w-12 flex-none items-center justify-center rounded-full text-base font-semibold text-white"
-                  style={{ backgroundColor: avatarColor(u.role) }}
-                >
-                  {initials(u.displayName, u.email)}
+                <div className="flex flex-1 items-start gap-3 px-4 pb-3 pt-4">
+                  <div
+                    className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px] text-sm font-semibold text-white"
+                    style={{ backgroundColor: avatarColor(u.role) }}
+                  >
+                    {initials(u.displayName, u.email)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-semibold leading-5 tracking-normal text-[#18181b]">
+                      {u.displayName || u.email || "User"}
+                    </div>
+                    <div className="truncate text-[11px] leading-4 text-[#a1a1aa]">
+                      {u.email || "-"}
+                    </div>
+                    <div className="mt-1.5">
+                      <span
+                        className={`inline-flex rounded px-1.5 py-0.5 font-mono text-micro font-medium leading-none ${roleBadgeClass(
+                          u.role,
+                        )}`}
+                      >
+                        {roleLabel(u.role)}
+                      </span>
+                      <span className="mt-1 block truncate font-mono text-micro text-[#a1a1aa]">
+                        Joined {formatDate(u.createdAt)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold tracking-normal text-[#18181b]">
-                    {u.displayName || u.email || "User"}
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-[#a1a1aa]">
-                    {u.email || "-"}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex rounded px-2 py-0.5 font-mono text-micro font-medium ${roleBadgeClass(
-                        u.role,
-                      )}`}
-                    >
-                      {roleLabel(u.role)}
-                    </span>
-                    <span className="font-mono text-micro text-[#a1a1aa]">
-                      Joined {formatDate(u.createdAt)}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => openEditUser(u)}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#e4e4e0] bg-[#fafaf8] px-2.5 text-label font-medium text-[#71717a] transition-colors hover:border-[#71717a]"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openDeleteConfirm(u)}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#fecaca] bg-[#fef2f2] px-2.5 text-label font-medium text-[#bf2d2d] transition-colors hover:bg-[#fee2e2]"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Remove
-                    </button>
-                  </div>
+
+                <div className="grid h-9 grid-cols-2 border-t border-[#eeeeeb]">
+                  <button
+                    type="button"
+                    onClick={() => openEditUser(u)}
+                    className="user-card-action inline-flex h-full items-center justify-center gap-1.5 font-medium leading-none text-[#71717a] transition-colors hover:bg-[#fafaf8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#eeeeeb]"
+                  >
+                    <Pencil className="h-[11px] w-[11px] shrink-0" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDeleteConfirm(u)}
+                    className="user-card-action inline-flex h-full items-center justify-center gap-1.5 border-l border-[#eeeeeb] font-medium leading-none text-[#bf2d2d] transition-colors hover:bg-[#fff7f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#fecaca]"
+                  >
+                    <Trash2 className="h-[11px] w-[11px] shrink-0" />
+                    Remove
+                  </button>
                 </div>
               </article>
             ))}
@@ -401,7 +410,7 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={() => setAddUserModal(true)}
-              className="min-h-[172px] rounded-xl border-[1.5px] border-dashed border-[#e4e4e0] bg-[#fafaf8] p-7 text-center transition-colors hover:border-[#bf2d2d] hover:bg-[#fef2f2]"
+              className="min-h-[138px] rounded-xl border-[1.5px] border-dashed border-[#e4e4e0] bg-[#fafaf8] p-7 text-center transition-colors hover:border-[#bf2d2d] hover:bg-[#fef2f2]"
             >
               <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#eeeeeb] text-[#a1a1aa]">
                 <Plus className="h-[18px] w-[18px]" />

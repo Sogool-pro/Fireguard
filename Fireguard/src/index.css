@@ -132,6 +132,10 @@ textarea {
   }
 }
 
+.user-card-action {
+  font-size: var(--fg-text-detail);
+}
+
 .fg-app-content {
   background:
     radial-gradient(circle at top left, rgba(191, 45, 45, 0.045), transparent 34%),
