@@ -1,7 +1,6 @@
 import React from "react";
 import { FaHome } from "react-icons/fa";
 import { FaFireAlt } from "react-icons/fa";
-import { MdOutlineReportGmailerrorred } from "react-icons/md";
 
 const stats = [
   {

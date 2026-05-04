@@ -5,26 +5,22 @@ import react from "@vitejs/plugin-react";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: process.env.VITE_BASE_PATH || "/Fireguard/",
+  base: process.env.VITE_BASE_PATH || "./",
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Split large dependencies into separate chunks
-          html2canvas: ["html2canvas"],
-          emailjs: ["@emailjs/browser"],
-          firebase: [
-            "firebase/app",
-            "firebase/auth",
-            "firebase/firestore",
-            "firebase/database",
-          ],
-          // Split routes into lazy-loaded chunks
-          dashboard: ["./src/pages/Dashboard.jsx"],
-          logs: ["./src/pages/LogsPage.jsx"],
-          analytics: ["./src/pages/AnalyticsPage.jsx"],
-          users: ["./src/pages/UsersPage.jsx"],
-          settings: ["./src/pages/SettingsPage.jsx"],
+        manualChunks(id) {
+          if (
+            /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(
+              id,
+            )
+          ) {
+            return "react-vendor";
+          }
+          if (id.includes("node_modules/firebase")) return "firebase";
+          if (id.includes("node_modules/recharts")) return "recharts";
+          if (id.includes("node_modules/xlsx")) return "xlsx";
+          if (id.includes("node_modules/@emailjs")) return "emailjs";
         },
       },
     },

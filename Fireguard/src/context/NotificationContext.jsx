@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useRoom } from "./RoomContext";
 import { db } from "../firebase";
-import { ref, onValue } from "firebase/database";
+import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
 
 const NotificationContext = createContext();
 
@@ -15,7 +15,7 @@ export function NotificationProvider({ children }) {
   const [logsAlert, setLogsAlert] = useState(false);
   const [lastViewedLogs, setLastViewedLogs] = useState(null);
   const [lastViewedDashboard, setLastViewedDashboard] = useState(null);
-  const [latestLogs, setLatestLogs] = useState([]);
+  const [latestLogTime, setLatestLogTime] = useState(null);
   const location = useLocation();
   const { rooms } = useRoom();
 
@@ -46,31 +46,31 @@ export function NotificationProvider({ children }) {
 
   // Monitor logs for new entries
   useEffect(() => {
-    const alertsRef = ref(db, "alerts");
-    const unsub = onValue(alertsRef, (snapshot) => {
+    const latestLogQuery = query(
+      ref(db, "alerts"),
+      orderByChild("timestamp"),
+      limitToLast(1),
+    );
+    const unsub = onValue(latestLogQuery, (snapshot) => {
       const data = snapshot.val() || {};
-      const logsArr = Object.entries(data)
-        .map(([id, alert]) => ({
-          ...alert,
-          id,
-          timestamp: alert.timestamp,
-        }))
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-      setLatestLogs(logsArr);
+      const latestLog = Object.values(data).find((alert) => alert?.timestamp);
+      setLatestLogTime(latestLog?.timestamp || null);
     });
     return () => unsub();
   }, []);
 
   // Check for new logs
   useEffect(() => {
-    if (latestLogs.length > 0) {
-      const latestLog = latestLogs[0];
-      const latestLogTime = new Date(latestLog.timestamp).getTime();
+    if (latestLogTime) {
+      const latestLogMs = new Date(
+        String(latestLogTime).replace(" ", "T"),
+      ).getTime();
+
+      if (Number.isNaN(latestLogMs)) return;
 
       if (
         lastViewedLogs &&
-        latestLogTime > lastViewedLogs &&
+        latestLogMs > lastViewedLogs &&
         location.pathname !== "/logs"
       ) {
         setLogsAlert(true);
@@ -79,7 +79,7 @@ export function NotificationProvider({ children }) {
         setLastViewedLogs(Date.now());
       }
     }
-  }, [latestLogs, lastViewedLogs, location.pathname]);
+  }, [latestLogTime, lastViewedLogs, location.pathname]);
 
   // Set initial view times when component mounts
   useEffect(() => {

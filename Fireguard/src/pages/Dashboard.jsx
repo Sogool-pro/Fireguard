@@ -1,186 +1,244 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import RoomTile from "../components/RoomTile";
 import { useRoom } from "../context/RoomContext";
 import { db } from "../firebase";
-import { ref, onValue } from "firebase/database";
-import DashboardStats from "../components/DashboardStats";
+import {
+  endAt,
+  limitToLast,
+  onValue,
+  orderByChild,
+  query,
+  ref,
+  startAt,
+} from "firebase/database";
+
+function isRoomAlert(room) {
+  const level = String(room.alert_level || "").toLowerCase();
+  return (
+    room.fire ||
+    room.temperature > 55 ||
+    room.smoke > 600 ||
+    room.carbonMonoxide > 70 ||
+    level === "alert"
+  );
+}
+
+function isRoomWarning(room) {
+  return String(room.alert_level || "").toLowerCase() === "warning";
+}
+
+function getAlertTone(alert) {
+  const level = String(alert.alert_level || alert.level || "").toLowerCase();
+  const message = String(alert.message || "").toLowerCase();
+  if (level === "warning" || message.includes("warning")) return "warning";
+  return "danger";
+}
+
+function formatAlertTime(timestamp) {
+  if (!timestamp) return "-";
+  const date = new Date(String(timestamp).replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return timestamp;
+  return date.toLocaleString();
+}
 
 export default function Dashboard() {
   const { rooms } = useRoom();
   const [alertsToday, setAlertsToday] = useState(0);
-  const [legendExpanded, setLegendExpanded] = useState(false);
+  const [recentAlerts, setRecentAlerts] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const alertsRef = ref(db, "alerts");
-    const unsub = onValue(alertsRef, (snapshot) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todaysAlertsQuery = query(
+      alertsRef,
+      orderByChild("timestamp"),
+      startAt(todayStr),
+      endAt(`${todayStr}\uf8ff`),
+    );
+    const recentAlertsQuery = query(
+      alertsRef,
+      orderByChild("timestamp"),
+      limitToLast(5),
+    );
+
+    const unsubToday = onValue(todaysAlertsQuery, (snapshot) => {
       const data = snapshot.val() || {};
-      let todayCount = 0;
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-      Object.values(data).forEach((alert) => {
-        if (!alert || !alert.timestamp) return;
-        // Check if alert is today
-        const alertDate = alert.timestamp.slice(0, 10); // 'YYYY-MM-DD'
-        if (alertDate === todayStr) {
-          todayCount++;
-        }
-      });
-      setAlertsToday(todayCount);
+      setAlertsToday(Object.keys(data).length);
     });
-    return () => unsub();
+
+    const unsubRecent = onValue(recentAlertsQuery, (snapshot) => {
+      const data = snapshot.val() || {};
+      const latestAlerts = Object.entries(data)
+        .map(([id, alert]) => ({ id, ...alert }))
+        .filter((alert) => alert && alert.timestamp)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 5);
+
+      setRecentAlerts(latestAlerts);
+    });
+
+    return () => {
+      unsubToday();
+      unsubRecent();
+    };
   }, []);
 
+  const visibleRooms = rooms.filter((room) => !room.archived);
+  const warningCount = visibleRooms.filter(
+    (room) => !room.isOffline && isRoomWarning(room),
+  ).length;
+  const onlineCount = visibleRooms.filter((room) => !room.isOffline).length;
+  const alertCount = visibleRooms.filter(
+    (room) => !room.isOffline && isRoomAlert(room),
+  ).length;
+
   return (
-    <div className="p-4 md:ml-5 flex flex-col min-h-screen text-sm md:text-base bg-gray-50">
-      {/* only count rooms that are not archived */}
-      {(() => {
-        const visibleRooms = rooms.filter((r) => !r.archived);
-        return (
-          <>
-            <div className="mx-4 mb-4 flex flex-col xl:flex-row gap-4 xl:items-stretch">
-              <div className="flex-1 min-w-0">
-                <DashboardStats
-                  totalRooms={visibleRooms.length}
-                  alertsToday={alertsToday}
-                  className="mb-0 h-full xl:h-[88px]"
-                />
-              </div>
-              <section className="xl:w-[320px] shrink-0 h-full xl:h-[88px] bg-white border border-red-200 rounded-xl shadow-sm">
-                <div className="px-3 py-1.5 h-full flex flex-col gap-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-red-700 tracking-wide uppercase">
-                        Emergency Contact
-                      </p>
-                      <h2 className="text-xs font-bold text-gray-800 mt-0.5 truncate">
-                        Panabo City Fire Station
-                      </h2>
-                    </div>
-                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
-                      Fire Response
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <a
-                      href="tel:0848231773"
-                      className="flex flex-col rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] leading-3 text-red-800 hover:bg-red-100 transition-colors"
-                    >
-                      <span className="font-medium">Landline</span>
-                      <span className="font-bold">(084) 823 - 1773</span>
-                    </a>
-                    <a
-                      href="tel:09284587586"
-                      className="flex flex-col rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] leading-3 text-red-800 hover:bg-red-100 transition-colors"
-                    >
-                      <span className="font-medium">SMART</span>
-                      <span className="font-bold">0928-458-7586</span>
-                    </a>
-                  </div>
-                </div>
-              </section>
-            </div>
-            <div className="flex flex-wrap justify-center gap-6 px-4 mb-24 md:mb-32">
-              {visibleRooms.map((room, idx) => (
-                <div
-                  key={room.nodeId || idx}
-                  className="flex justify-center flex-grow flex-shrink basis-[240px] max-w-[320px]"
-                >
-                  <RoomTile {...room} />
-                </div>
-              ))}
-            </div>
-          </>
-        );
-      })()}
-      {/* Legend Footer: sticky at bottom of viewport */}
-      <footer className="sticky bottom-0 w-full z-10 mt-auto">
-        <div className="bg-gray-700 backdrop-blur-sm rounded-xl shadow-md p-3 md:p-3 flex flex-col md:flex-row md:items-center md:justify-center gap-3 md:gap-4 text-xs md:text-sm border border-gray-700">
-          {/* Mobile: Legend label and Show details button in one row */}
-          <div className="md:hidden flex items-center justify-between w-full">
-            <span className="font-semibold text-white">Legend:</span>
+    <div className="fg-page">
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-lbl">Total Rooms</div>
+          <div className="stat-num">
+            {String(visibleRooms.length).padStart(2, "0")}
+          </div>
+          <div className="stat-sub">Monitored zones</div>
+        </div>
+        <div className="stat-card red">
+          <div className="stat-lbl">Alerts Today</div>
+          <div className="stat-num red">
+            {String(alertsToday).padStart(2, "0")}
+          </div>
+          <div className="stat-sub">Within 24 hours</div>
+        </div>
+        <div className="stat-card amber">
+          <div className="stat-lbl">Warnings</div>
+          <div className="stat-num amber">
+            {String(warningCount).padStart(2, "0")}
+          </div>
+          <div className="stat-sub">Active now</div>
+        </div>
+        <div className="stat-card green">
+          <div className="stat-lbl">Online Rooms</div>
+          <div className="stat-num green">
+            {String(onlineCount).padStart(2, "0")}
+          </div>
+          <div className="stat-sub">of {visibleRooms.length} active</div>
+        </div>
+      </div>
+
+      <div className="sec-hdr">
+        <span className="sec-title">Rooms</span>
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-1.5 font-mono text-[11px] text-[#71717a]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#16803c]" />
+          {alertCount > 0 ? `${alertCount} active alert` : "Auto-registered nodes"}
+        </span>
+      </div>
+
+      <div className="rooms-grid">
+        {visibleRooms.length === 0 ? (
+          <div className="fg-card p-8 text-center text-sm text-[#71717a]">
+            No rooms found.
+          </div>
+        ) : (
+          visibleRooms.map((room, idx) => (
+            <RoomTile key={room.nodeId || idx} {...room} />
+          ))
+        )}
+      </div>
+
+      <div className="bottom-row">
+        <div className="alerts-panel">
+          <div className="panel-hdr">
+            <div className="panel-hdr-title">Recent Alerts</div>
             <button
-              className="text-xs px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-              onClick={() => setLegendExpanded((v) => !v)}
-              aria-expanded={legendExpanded}
-              aria-controls="mobile-legend-details"
+              type="button"
+              className="panel-hdr-link"
+              onClick={() => navigate("/logs")}
             >
-              {legendExpanded ? "Hide details" : "Show details"}
+              View all
             </button>
           </div>
-          <div className="w-full text-gray-300">
-            {/* Mobile: stacked details (toggle) - unchanged behavior */}
-            <div
-              id="mobile-legend-details"
-              className={`${
-                legendExpanded ? "block" : "hidden"
-              } md:hidden text-gray-300`}
-            >
-              <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Temperature:</span>{" "}
-                Normal {"<"}
-                40°C, Warning 40-49°C, Alert {">"}50°C
-              </span>
-              <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">
-                  Smoke and Gas (ratio):
-                </span>{" "}
-                Normal {"≤"}
-                1.5, Warning 1.6-3.0, Alert {">"}3.0
-              </span>
-              <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">CO (ratio):</span>{" "}
-                Normal {"≤"}1.5, Warning 1.6-3.0, Alert {">"}3.0
-              </span>
-              <span className="mr-3 md:mr-4 block">
-                <span className="font-semibold text-white">Humidity:</span>{" "}
-                Normal {"≤"}
-                80%, Warning 81-100%, Alert {">"}100%
-              </span>
-              <span className="block">
-                <span className="font-semibold text-white">Flame:</span> Alert
-                if detected
-              </span>
-            </div>
-
-            {/* Desktop: legend layout matching the provided screenshot (centered) */}
-            <div className="hidden md:flex md:items-center md:justify-center md:gap-6 w-full">
-              <div className="flex flex-col items-start ml-16 mr-4">
-                <span className="font-semibold text-white mb-2 ml-16">
-                  Legend:
-                </span>
-                <div className="flex items-center gap-2 mb-2 ml-16">
-                  <span className="inline-block w-4 h-4 rounded-[4px] bg-yellow-400 animate-pulse"></span>
-                  <span className="text-gray-300">Warning</span>
+          {recentAlerts.length === 0 ? (
+            <div className="p-5 text-sm text-[#71717a]">No recent alerts.</div>
+          ) : (
+            recentAlerts.map((alert) => {
+              const tone = getAlertTone(alert);
+              const roomName = alert.node
+                ? `Room ${String(alert.node).replace("NODE", "")}`
+                : "Unknown Room";
+              return (
+                <div className="alert-item" key={alert.id}>
+                  <div
+                    className={`alert-icon ${
+                      tone === "warning" ? "warning" : "danger"
+                    }`}
+                  >
+                    !
+                  </div>
+                  <div className="min-w-0">
+                    <div className="alert-room-tag">{roomName}</div>
+                    <div
+                      className={`alert-msg ${
+                        tone === "warning" ? "warning" : "danger"
+                      }`}
+                    >
+                      {alert.message || "-"}
+                    </div>
+                    <div className="alert-time">
+                      {formatAlertTime(alert.timestamp)}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-16">
-                  <span className="inline-block w-4 h-4 rounded-[4px] bg-red-500 animate-pulse"></span>
-                  <span className="text-gray-300">Alert</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-5 gap-x-16 text-sm mx-auto mt-2 text-gray-300">
-                <div className="font-semibold">Temperature</div>
-                <div className="font-semibold">Smoke and Gas</div>
-                <div className="font-semibold">Carbon monoxide</div>
-                <div className="font-semibold">Humidity</div>
-                <div className="font-semibold">Flame</div>
-
-                <div>40-49°C</div>
-                <div>1.6-3.0 ratio</div>
-                <div>1.6-3.0 ratio</div>
-                <div>81-100%</div>
-                <div className="text-gray-500 mt-2">—</div>
-
-                <div>Above 50°C</div>
-                <div>Above 3.0 ratio</div>
-                <div>Above 3.0 ratio</div>
-                <div>Above 100%</div>
-                <div>If detected</div>
-              </div>
-            </div>
-          </div>
+              );
+            })
+          )}
         </div>
-      </footer>
+
+        <div className="legend-card">
+          <div className="legend-title">Sensor Thresholds</div>
+          <table className="legend-table">
+            <thead>
+              <tr>
+                <th>Sensor</th>
+                <th>
+                  <span className="badge warn">Warning</span>
+                </th>
+                <th>
+                  <span className="badge alert">Alert</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Temperature</td>
+                <td className="font-mono text-[#c47d0a]">40-49 C</td>
+                <td className="font-mono text-[#bf2d2d]">&gt;50 C</td>
+              </tr>
+              <tr>
+                <td>Smoke / Gas</td>
+                <td className="font-mono text-[#c47d0a]">1.6-3.0</td>
+                <td className="font-mono text-[#bf2d2d]">&gt;3.0</td>
+              </tr>
+              <tr>
+                <td>Carbon Monoxide</td>
+                <td className="font-mono text-[#c47d0a]">1.6-3.0</td>
+                <td className="font-mono text-[#bf2d2d]">&gt;3.0</td>
+              </tr>
+              <tr>
+                <td>Humidity</td>
+                <td className="font-mono text-[#c47d0a]">81-100%</td>
+                <td className="font-mono text-[#a1a1aa]">-</td>
+              </tr>
+              <tr>
+                <td>Flame Sensor</td>
+                <td className="font-mono text-[#a1a1aa]">-</td>
+                <td className="font-mono text-[#bf2d2d]">Detected</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

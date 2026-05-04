@@ -1,12 +1,20 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import LogsTable from "../components/LogsTable";
 import { db } from "../firebase";
-import { onValue, push, ref } from "firebase/database";
+import { limitToLast, onValue, orderByChild, push, query, ref } from "firebase/database";
 import { useRoom } from "../context/RoomContext";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
 const MANUAL_LOG_QUEUE_KEY = "fireguard_manual_log_queue_v1";
+const LIVE_LOG_LIMIT = 500;
+const LIVE_LOG_FALLBACK_DELAY = 5000;
 const REPORT_CHANNEL_LABELS = {
   central_hub_sms: "Central Hub SMS",
   central_hub_call: "Central Hub Call",
@@ -79,6 +87,31 @@ function formatReportedBy(alert) {
   return alert?.manualEntry ? "Unknown User" : "Central Hub";
 }
 
+function getRoomNameEntries(rooms) {
+  return rooms
+    .filter((room) => room.nodeId)
+    .map((room) => [room.nodeId, room.roomName])
+    .sort(([nodeA], [nodeB]) => String(nodeA).localeCompare(String(nodeB)));
+}
+
+function areRoomNameEntriesEqual(current, next) {
+  if (current.length !== next.length) return false;
+  return current.every(
+    ([nodeId, roomName], index) =>
+      nodeId === next[index][0] && roomName === next[index][1],
+  );
+}
+
+function getRecentAlertEntries(data, limit = LIVE_LOG_LIMIT) {
+  return Object.entries(data || {})
+    .filter(([, alert]) => alert && alert.timestamp)
+    .sort(
+      ([, alertA], [, alertB]) =>
+        String(alertB.timestamp).localeCompare(String(alertA.timestamp)),
+    )
+    .slice(0, limit);
+}
+
 const initialManualForm = {
   roomNode: "",
   customNode: "",
@@ -95,7 +128,8 @@ const initialManualForm = {
 };
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState([]);
+  const [rawAlerts, setRawAlerts] = useState([]);
+  const [roomNameEntries, setRoomNameEntries] = useState([]);
   const { rooms } = useRoom();
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -109,70 +143,124 @@ export default function LogsPage() {
   );
 
   useEffect(() => {
-    const alertsRef = ref(db, "alerts");
-    const unsub = onValue(alertsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const logsArr = Object.entries(data)
-        .map(([id, alert]) => {
-          // Find custom room name from rooms context
-          let customRoomName = "-";
-          if (alert && alert.node) {
-            const roomObj = rooms.find((r) => r.nodeId === alert.node);
-            customRoomName = roomObj
-              ? roomObj.roomName
-              : `ROOM NO. ${String(alert.node).replace("NODE", "")}`;
-          }
-          return {
-            ...alert,
-            id,
-            date: alert && alert.timestamp ? alert.timestamp : "-",
-            room: customRoomName,
-            alert: alert && alert.message ? alert.message : "-",
-            entryType: alert?.manualEntry
-              ? `Manual (${formatReportChannel(alert.report_channel)})`
-              : "Automatic",
-            reportedBy: formatReportedBy(alert),
-            notes:
-              alert && alert.report_notes
-                ? String(alert.report_notes).trim()
-                : "-",
-            temperature:
-              alert &&
-              alert.temperature !== undefined &&
-              alert.temperature !== null
-                ? `${alert.temperature}°C`
-                : "-",
-            humidity:
-              alert && alert.humidity !== undefined && alert.humidity !== null
-                ? `${alert.humidity}%`
-                : "-",
-            flame: alert && alert.flame === 1 ? "Detected" : "Not Detected",
-            smoke:
-              alert &&
-              alert.Gas_and_Smoke !== undefined &&
-              alert.Gas_and_Smoke !== null
-                ? `${alert.Gas_and_Smoke} ppm`
-                : "-",
-            carbonMonoxide:
-              alert &&
-              alert.carbon_monoxide !== undefined &&
-              alert.carbon_monoxide !== null
-                ? `${alert.carbon_monoxide} ppm`
-                : "-",
-          };
-        })
-        .filter(
-          (log) =>
-            log.date !== "-" &&
-            log.date !== undefined &&
-            log.date !== null &&
-            log.date !== "",
-        )
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-      setLogs(logsArr);
-    });
-    return () => unsub();
+    const nextEntries = getRoomNameEntries(rooms);
+    setRoomNameEntries((current) =>
+      areRoomNameEntriesEqual(current, nextEntries) ? current : nextEntries,
+    );
   }, [rooms]);
+
+  useEffect(() => {
+    const recentLogsQuery = query(
+      ref(db, "alerts"),
+      orderByChild("timestamp"),
+      limitToLast(LIVE_LOG_LIMIT),
+    );
+    let receivedSnapshot = false;
+    let fallbackUnsub = null;
+
+    const applyEntries = (entries) => {
+      receivedSnapshot = true;
+      startTransition(() => {
+        setRawAlerts(entries);
+      });
+    };
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (receivedSnapshot) return;
+
+      fallbackUnsub = onValue(ref(db, "alerts"), (snapshot) => {
+        applyEntries(getRecentAlertEntries(snapshot.val()));
+      });
+    }, LIVE_LOG_FALLBACK_DELAY);
+
+    const unsub = onValue(
+      recentLogsQuery,
+      (snapshot) => {
+        const entries = [];
+        snapshot.forEach((childSnapshot) => {
+          const alert = childSnapshot.val();
+          if (alert) entries.push([childSnapshot.key, alert]);
+        });
+
+        applyEntries(entries);
+      },
+      (error) => {
+        console.error("Failed to load indexed logs query:", error);
+        if (fallbackUnsub) return;
+
+        fallbackUnsub = onValue(ref(db, "alerts"), (snapshot) => {
+          applyEntries(getRecentAlertEntries(snapshot.val()));
+        });
+      },
+    );
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      unsub();
+      if (fallbackUnsub) fallbackUnsub();
+    };
+  }, []);
+
+  const logs = useMemo(() => {
+    const roomNamesByNode = new Map(roomNameEntries);
+
+    return rawAlerts
+      .map(([id, alert]) => {
+        // Find custom room name from rooms context
+        let customRoomName = "-";
+        if (alert && alert.node) {
+          customRoomName =
+            roomNamesByNode.get(alert.node) ||
+            `ROOM NO. ${String(alert.node).replace("NODE", "")}`;
+        }
+        return {
+          ...alert,
+          id,
+          date: alert && alert.timestamp ? alert.timestamp : "-",
+          room: customRoomName,
+          alert: alert && alert.message ? alert.message : "-",
+          entryType: alert?.manualEntry
+            ? `Manual (${formatReportChannel(alert.report_channel)})`
+            : "Automatic",
+          reportedBy: formatReportedBy(alert),
+          notes:
+            alert && alert.report_notes
+              ? String(alert.report_notes).trim()
+              : "-",
+          temperature:
+            alert &&
+            alert.temperature !== undefined &&
+            alert.temperature !== null
+              ? `${alert.temperature} C`
+              : "-",
+          humidity:
+            alert && alert.humidity !== undefined && alert.humidity !== null
+              ? `${alert.humidity}%`
+              : "-",
+          flame: alert && alert.flame === 1 ? "Detected" : "Not Detected",
+          smoke:
+            alert &&
+            alert.Gas_and_Smoke !== undefined &&
+            alert.Gas_and_Smoke !== null
+              ? `${alert.Gas_and_Smoke} ppm`
+              : "-",
+          carbonMonoxide:
+            alert &&
+            alert.carbon_monoxide !== undefined &&
+            alert.carbon_monoxide !== null
+              ? `${alert.carbon_monoxide} ppm`
+              : "-",
+        };
+      })
+      .filter(
+        (log) =>
+          log.date !== "-" &&
+          log.date !== undefined &&
+          log.date !== null &&
+          log.date !== "",
+      )
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [rawAlerts, roomNameEntries]);
 
   const enqueueManualLog = useCallback((payload) => {
     const queue = loadQueuedManualLogs();
@@ -322,38 +410,35 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="p-4 ml-5 space-y-4">
-      <section className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="p-4 border-b border-gray-200 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="fg-page">
+      <section className="logs-toolbar">
+        <div className="logs-toolbar-top">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">
+            <div className="logs-form-title">
               Add Manual Record/Report
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">
+            </div>
+            <p className="logs-form-sub">
               Use this when the central hub cannot upload logs due to unstable
               connection.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`text-xs px-2 py-1 rounded-full ${
-                isOnline
-                  ? "bg-green-100 text-green-700"
-                  : "bg-yellow-100 text-yellow-700"
-              }`}
+              className={`online-badge ${isOnline ? "" : "offline"}`}
             >
+              <span className="online-led" />
               {isOnline ? "Online" : "Offline"}
             </span>
             {queuedCount > 0 ? (
               <>
-                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                <span className="rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 font-mono text-[11px] text-[#1d4ed8]">
                   {queuedCount} pending sync
                 </span>
                 <button
                   type="button"
                   onClick={syncQueuedManualLogs}
                   disabled={!isOnline}
-                  className="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                  className="fg-btn"
                 >
                   Sync Pending
                 </button>
@@ -362,7 +447,7 @@ export default function LogsPage() {
             <button
               type="button"
               onClick={() => setShowManualForm((v) => !v)}
-              className="px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
+              className="fg-btn fg-btn-primary"
             >
               {showManualForm ? "Hide Form" : "Add Record/Report"}
             </button>
@@ -370,12 +455,12 @@ export default function LogsPage() {
         </div>
 
         {showManualForm ? (
-          <form className="p-4" onSubmit={handleManualSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              <label className="text-xs text-gray-700">
-                Room (optional)
+          <form onSubmit={handleManualSubmit}>
+            <div className="form-grid">
+              <label className="form-group">
+                <span className="fg-label">Room (optional)</span>
                 <select
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-select"
                   value={manualForm.roomNode}
                   onChange={(e) =>
                     handleManualFieldChange("roomNode", e.target.value)
@@ -390,12 +475,12 @@ export default function LogsPage() {
                 </select>
               </label>
 
-              <label className="text-xs text-gray-700">
-                Node ID (if room not listed)
+              <label className="form-group">
+                <span className="fg-label">Node ID (if room not listed)</span>
                 <input
                   type="text"
                   placeholder="NODE1"
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.customNode}
                   onChange={(e) =>
                     handleManualFieldChange("customNode", e.target.value)
@@ -403,10 +488,10 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                Alarm Severity
+              <label className="form-group">
+                <span className="fg-label">Alarm Severity</span>
                 <select
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-select"
                   value={manualForm.level}
                   onChange={(e) =>
                     handleManualFieldChange("level", e.target.value)
@@ -417,13 +502,13 @@ export default function LogsPage() {
                 </select>
               </label>
 
-              <label className="text-xs text-gray-700 lg:col-span-2">
-                Alarm Message
+              <label className="form-group lg:col-span-2">
+                <span className="fg-label">Alarm Message</span>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Smoke level rising in room NODE2"
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.message}
                   onChange={(e) =>
                     handleManualFieldChange("message", e.target.value)
@@ -431,12 +516,12 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                Report Timestamp
+              <label className="form-group">
+                <span className="fg-label">Report Timestamp</span>
                 <input
                   type="datetime-local"
                   required
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.timestamp}
                   onChange={(e) =>
                     handleManualFieldChange("timestamp", e.target.value)
@@ -444,12 +529,12 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                Temperature (C)
+              <label className="form-group">
+                <span className="fg-label">Temperature (C)</span>
                 <input
                   type="number"
                   step="0.1"
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.temperature}
                   onChange={(e) =>
                     handleManualFieldChange("temperature", e.target.value)
@@ -457,12 +542,12 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                Humidity (%)
+              <label className="form-group">
+                <span className="fg-label">Humidity (%)</span>
                 <input
                   type="number"
                   step="0.1"
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.humidity}
                   onChange={(e) =>
                     handleManualFieldChange("humidity", e.target.value)
@@ -470,12 +555,12 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                Smoke/Gas (ppm)
+              <label className="form-group">
+                <span className="fg-label">Smoke/Gas (ppm)</span>
                 <input
                   type="number"
                   step="0.1"
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.smoke}
                   onChange={(e) =>
                     handleManualFieldChange("smoke", e.target.value)
@@ -483,12 +568,12 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                CO (ppm)
+              <label className="form-group">
+                <span className="fg-label">CO (ppm)</span>
                 <input
                   type="number"
                   step="0.1"
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-input"
                   value={manualForm.carbonMonoxide}
                   onChange={(e) =>
                     handleManualFieldChange("carbonMonoxide", e.target.value)
@@ -496,10 +581,10 @@ export default function LogsPage() {
                 />
               </label>
 
-              <label className="text-xs text-gray-700">
-                Flame Sensor
+              <label className="form-group">
+                <span className="fg-label">Flame Sensor</span>
                 <select
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-select"
                   value={manualForm.flame}
                   onChange={(e) =>
                     handleManualFieldChange("flame", e.target.value)
@@ -510,10 +595,10 @@ export default function LogsPage() {
                 </select>
               </label>
 
-              <label className="text-xs text-gray-700">
-                Report Source
+              <label className="form-group">
+                <span className="fg-label">Report Source</span>
                 <select
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-select"
                   value={manualForm.reportChannel}
                   onChange={(e) =>
                     handleManualFieldChange("reportChannel", e.target.value)
@@ -525,11 +610,11 @@ export default function LogsPage() {
                 </select>
               </label>
 
-              <label className="text-xs text-gray-700 lg:col-span-3">
-                Notes (optional)
+              <label className="form-group form-grid-wide">
+                <span className="fg-label">Notes (optional)</span>
                 <textarea
                   rows={2}
-                  className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm"
+                  className="fg-textarea"
                   placeholder="Additional details from the report message"
                   value={manualForm.notes}
                   onChange={(e) =>
@@ -539,18 +624,18 @@ export default function LogsPage() {
               </label>
             </div>
 
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="form-actions">
               <button
                 type="button"
                 onClick={resetManualForm}
-                className="px-4 py-2 rounded border border-gray-300 text-gray-700 text-sm hover:bg-gray-50"
+                className="fg-btn"
               >
                 Clear
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
+                className="fg-btn fg-btn-primary"
               >
                 {isSubmitting ? "Saving..." : "Save Record"}
               </button>

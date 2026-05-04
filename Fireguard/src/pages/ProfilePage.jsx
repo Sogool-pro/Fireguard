@@ -8,6 +8,7 @@ import ChangePasswordModal from "../components/ChangePasswordModal";
 
 export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
+  const [userRole, setUserRole] = useState("user");
   const [editingName, setEditingName] = useState(false);
   const [loadingName, setLoadingName] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -29,6 +30,7 @@ export default function ProfilePage() {
           setDisplayName(
             userData.displayName || auth.currentUser.displayName || "",
           );
+          setUserRole(userData.role || "user");
 
           if (userData.needsPasswordChange) {
             const storedTempPassword = sessionStorage.getItem("tempPassword");
@@ -76,35 +78,70 @@ export default function ProfilePage() {
     }
   };
 
+  const email = auth.currentUser?.email || "";
+  const displayLabel = displayName || email || "User";
+  const profileInitials = displayLabel
+    .split(/\s|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold uppercase tracking-tight text-slate-950">
-          Profile Settings
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Manage your account information and security preferences.
-        </p>
+    <div className="fg-page">
+      <div className="fg-page-head">
+        <div>
+          <div className="fg-eyebrow">Account Center</div>
+          <div className="fg-heading">Profile & Security</div>
+          <div className="fg-description">
+            Manage the account used for dashboard access, manual entries, and
+            system activity.
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-        <div className="grid gap-10 border-b border-slate-100 px-8 py-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-slate-400">
-              <FaUser className="text-sm" />
-              <span className="text-sm font-semibold uppercase tracking-[0.2em]">
-                Personal Info
-              </span>
+      <div className="profile-shell">
+        <aside className="profile-overview-card">
+          <div className="mb-5 flex items-center gap-4">
+            <div className="profile-avatar-lg">{profileInitials || "U"}</div>
+            <div className="min-w-0">
+              <div className="truncate text-lg font-bold text-[#18181b]">
+                {displayLabel}
+              </div>
+              <div className="mt-1 truncate text-xs text-[#71717a]">{email}</div>
+              <div className="mt-2 inline-flex rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[#bf2d2d]">
+                {userRole}
+              </div>
             </div>
-            <p className="max-w-sm text-sm leading-6 text-slate-500">
-              Update your name and contact details.
-            </p>
           </div>
+          <div className="profile-meta-list">
+            <div className="profile-meta-item">
+              <span>Role</span>
+              <strong>{userRole}</strong>
+            </div>
+            <div className="profile-meta-item">
+              <span>Status</span>
+              <strong>Active</strong>
+            </div>
+            <div className="profile-meta-item">
+              <span>Email</span>
+              <strong>{email || "-"}</strong>
+            </div>
+          </div>
+        </aside>
 
-          <div className="space-y-5">
+        <section className="profile-details-card">
+          <div className="p-6">
+            <div className="section-mini-title">Personal Information</div>
+            <div className="section-mini-copy">
+              These details appear in manual records, exports, and account
+              activity logs.
+            </div>
+
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-600">
+                <label className="fg-label mb-2 block">
                   Full Name
                 </label>
                 {editingName ? (
@@ -112,38 +149,38 @@ export default function ProfilePage() {
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+                    className="fg-input"
                   />
                 ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-900">
+                  <div className="rounded-[14px] border border-[#e4e4e0] bg-[#fafaf8] px-4 py-3 text-sm font-medium text-[#18181b]">
                     {displayName || "Not set"}
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-600">
+                <label className="fg-label mb-2 block">
                   Email Address
                 </label>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900">
-                  {auth.currentUser?.email}
+                <div className="rounded-[14px] border border-[#e4e4e0] bg-[#fafaf8] px-4 py-3 text-sm text-[#18181b]">
+                  {email}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               {editingName ? (
                 <>
                   <button
                     onClick={handleUpdateName}
                     disabled={loadingName}
-                    className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+                    className="fg-btn fg-btn-dark"
                   >
                     {loadingName ? "Saving..." : "Save Personal Info"}
                   </button>
                   <button
                     onClick={() => setEditingName(false)}
-                    className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                    className="fg-btn"
                   >
                     Cancel
                   </button>
@@ -151,45 +188,43 @@ export default function ProfilePage() {
               ) : (
                 <button
                   onClick={() => setEditingName(true)}
-                  className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="fg-btn fg-btn-dark"
                 >
                   Edit Personal Info
                 </button>
               )}
             </div>
-          </div>
-        </div>
-
-        <div className="grid gap-10 px-8 py-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-slate-400">
-              <FaLock className="text-sm" />
-              <span className="text-sm font-semibold uppercase tracking-[0.2em]">
-                Security
-              </span>
+            <div className="security-row-v2">
+              <div className="security-box-v2">
+                <h3 className="flex items-center gap-2">
+                  <FaLock className="text-xs text-[#a1a1aa]" />
+                  Password
+                </h3>
+                <p>
+                  Use the existing password flow to keep your account secure.
+                </p>
+                <button
+                  onClick={() => setShowChangePasswordModal(true)}
+                  className="fg-btn fg-btn-dark"
+                >
+                  Change Password
+                </button>
+              </div>
+              <div className="security-box-v2">
+                <h3 className="flex items-center gap-2">
+                  <FaUser className="text-xs text-[#a1a1aa]" />
+                  Account Activity
+                </h3>
+                <p>
+                  Your account is used in manual entries and system records.
+                </p>
+                <div className="inline-flex rounded-full border border-[#86efac] bg-[#f0fdf4] px-3 py-2 font-mono text-[11px] text-[#16803c]">
+                  Active
+                </div>
+              </div>
             </div>
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-800">
-              Make sure your password is strong and updated regularly.
-            </div>
           </div>
-
-          <div className="flex flex-col items-start gap-4">
-            <div>
-              <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
-                Password
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Use the existing password flow to keep your account secure.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowChangePasswordModal(true)}
-              className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Change Password
-            </button>
-          </div>
-        </div>
+        </section>
       </div>
 
       {/* Change Password Modal */}

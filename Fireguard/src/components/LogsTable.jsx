@@ -1,228 +1,227 @@
-import React, { useState } from "react";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import React, { useEffect, useMemo, useState } from "react";
+import { Download, Search } from "lucide-react";
 
-// Helper to format date as 'MAR 5 2025 9:00 pm'
-function formatLogDate(dateStr) {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  if (isNaN(date)) return dateStr;
+function formatLogDateParts(dateStr) {
+  if (!dateStr || dateStr === "-") return { date: "-", time: "" };
+  const normalized =
+    typeof dateStr === "string" ? dateStr.replace(" ", "T") : dateStr;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return { date: dateStr, time: "" };
+
   const months = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
-  const month = months[date.getMonth()];
-  const day = date.getDate();
-  const year = date.getFullYear();
   let hour = date.getHours();
   const min = date.getMinutes().toString().padStart(2, "0");
   const ampm = hour >= 12 ? "pm" : "am";
   hour = hour % 12;
   hour = hour ? hour : 12;
-  return `${month} ${day} ${year} ${hour}:${min} ${ampm}`;
+
+  return {
+    date: `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`,
+    time: `${hour}:${min} ${ampm}`,
+  };
+}
+
+function formatRoomLabel(value) {
+  const text = String(value || "-").trim();
+  if (!text || text === "-") return "-";
+
+  const roomNoMatch = text.match(/^room\s*no\.?\s*(\d+)$/i);
+  if (roomNoMatch) return `Room No. ${roomNoMatch[1]}`;
+
+  const roomMatch = text.match(/^room\s*(\d+)$/i);
+  if (roomMatch) return `Room ${roomMatch[1]}`;
+
+  return text;
+}
+
+function formatAlarmText(value) {
+  const text = String(value || "-").trim();
+  if (!text || text === "-") return "-";
+
+  return text
+    .replace(/^alert:\s*/i, "ALERT: ")
+    .replace(/^warning:\s*/i, "Warning: ")
+    .replace(/\s+/g, " ");
+}
+
+function getPageItems(currentPage, totalPages) {
+  if (totalPages === 0) return [];
+  if (totalPages === 1) return [1];
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) return [1, 2, 3, "end-ellipsis", totalPages];
+  if (currentPage >= totalPages - 2) {
+    return [1, "start-ellipsis", totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [
+    1,
+    "start-ellipsis",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "end-ellipsis",
+    totalPages,
+  ];
 }
 
 export default function LogsTable({ logs }) {
-  const [filters, setFilters] = useState({
-    date: "",
-    room: "",
-    alert: "",
-    temperature: "",
-    humidity: "",
-    flame: "",
-    smoke: "",
-    carbonMonoxide: "",
-    entryType: "",
-    reportedBy: "",
-    notes: "",
-  });
-
-  // Pagination state
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const rowsPerPage = 10;
+  const [exporting, setExporting] = useState(false);
+  const rowsPerPage = 6;
 
-  const handleFilterChange = (e, key) => {
-    setFilters({ ...filters, [key]: e.target.value });
-    setPage(1); // Reset to first page on filter change
-  };
+  const filteredLogs = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return logs;
 
-  const filteredLogs = logs.filter((log) =>
-    Object.keys(filters).every((key) =>
-      (log[key] || "").toLowerCase().includes(filters[key].toLowerCase()),
-    ),
-  );
+    return logs.filter((log) => {
+      const haystack = Object.values(log).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [logs, search]);
 
-  // Pagination logic
   const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
-  const paginatedLogs = filteredLogs.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage,
+  const paginatedLogs = useMemo(
+    () => filteredLogs.slice((page - 1) * rowsPerPage, page * rowsPerPage),
+    [filteredLogs, page],
   );
+  const pageItems = useMemo(
+    () => getPageItems(page, totalPages),
+    [page, totalPages],
+  );
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   // Excel Export
-  const handleExportExcel = () => {
-    const exportLogs = filteredLogs.map((log) => ({
-      Date: log.date,
-      Room: log.room,
-      Alarm: log.alert,
-      Temperature: log.temperature,
-      Humidity: log.humidity,
-      "Flame Sensor": log.flame,
-      "Smoke Level": log.smoke,
-      "CO Level": log.carbonMonoxide,
-      "Entry Type": log.entryType,
-      "Recorded By": log.reportedBy,
-      Notes: log.notes,
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(exportLogs);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
-    XLSX.writeFile(workbook, "Logs.xlsx");
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const exportLogs = filteredLogs.map((log) => ({
+        Date: log.date,
+        Room: log.room,
+        Alarm: log.alert,
+        Temperature: log.temperature,
+        Humidity: log.humidity,
+        "Flame Sensor": log.flame,
+        "Smoke Level": log.smoke,
+        "CO Level": log.carbonMonoxide,
+        "Entry Type": log.entryType,
+        "Recorded By": log.reportedBy,
+        Notes: log.notes,
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(exportLogs);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
+      XLSX.writeFile(workbook, "Logs.xlsx");
+    } finally {
+      setExporting(false);
+    }
   };
 
-  // PDF Export
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Logs", 14, 10);
-    doc.autoTable({
-      head: [
-        [
-          "Date",
-          "Room",
-          "Alert",
-          "Temperature",
-          "Humidity",
-          "Flame Sensor",
-          "Smoke Level",
-          "CO Level",
-          "Entry Type",
-          "Recorded By",
-          "Notes",
-        ],
-      ],
-      body: filteredLogs.map((log) => [
-        log.date,
-        log.room,
-        log.alert,
-        log.temperature,
-        log.humidity,
-        log.flame,
-        log.smoke,
-        log.carbonMonoxide,
-        log.entryType,
-        log.reportedBy,
-        log.notes,
-      ]),
-      startY: 18,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [243, 244, 246] },
-    });
-    doc.save("logs.pdf");
+  const getAlarmTone = (value) => {
+    const text = String(value || "").toLowerCase();
+    if (text.includes("warning") || text.includes("warn")) return "warning";
+    return "danger";
   };
-
-  // (Acknowledgement feature removed)
 
   return (
-    <div>
-      <div className="flex justify-end items-center gap-2 mb-2">
-        <div className="flex gap-2">
+    <div className="table-card">
+      <div className="table-toolbar">
+        <label className="table-search">
+          <Search className="h-3.5 w-3.5 text-[#a1a1aa]" />
+          <input
+            placeholder="Search logs..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={handleExportExcel}
-            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+            className="fg-btn fg-btn-success text-xs"
+            disabled={exporting}
+            type="button"
           >
-            Download Excel
+            <Download className="h-3.5 w-3.5" />
+            {exporting ? "Preparing..." : "Download Excel"}
           </button>
         </div>
       </div>
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
+      <div className="overflow-x-auto">
+        <table className="fg-table logs-table">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Date
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Room
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Alarm
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Temperature
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Humidity
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Flame Sensor
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Smoke Level
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                CO Level
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Entry Type
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Recorded By
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                Notes
-              </th>
-              {/* Acknowledge column removed */}
-            </tr>
-            <tr className="bg-gray-50">
-              {Object.keys(filters).map((key) => (
-                <th className="px-2 py-2" key={key}>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                    placeholder="Filter"
-                    value={filters[key]}
-                    onChange={(e) => handleFilterChange(e, key)}
-                  />
-                </th>
-              ))}
-              {/* removed acknowledge column filter placeholder */}
+            <tr>
+              <th>Date</th>
+              <th>Room</th>
+              <th>Alarm</th>
+              <th>Temp</th>
+              <th>Humidity</th>
+              <th>Flame</th>
+              <th>Smoke Level</th>
+              <th>CO Level</th>
+              <th>Entry Type</th>
+              <th>Recorded By</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedLogs.map((log, idx) => (
-              <tr key={idx} className={idx % 2 === 1 ? "bg-gray-50" : ""}>
-                <td className="px-4 py-3">{formatLogDate(log.date)}</td>
-                <td className="px-4 py-3">{log.room}</td>
-                <td className="px-4 py-3 font-semibold text-red-700">
-                  {log.alert}
-                </td>
-                <td className="px-4 py-3">{log.temperature}</td>
-                <td className="px-4 py-3">{log.humidity}</td>
-                <td className="px-4 py-3">{log.flame}</td>
-                <td className="px-4 py-3">{log.smoke}</td>
-                <td className="px-4 py-3">{log.carbonMonoxide}</td>
-                <td className="px-4 py-3">{log.entryType}</td>
-                <td className="px-4 py-3">{log.reportedBy}</td>
-                <td className="px-4 py-3 max-w-xs whitespace-normal break-words text-gray-600">
-                  {log.notes}
-                </td>
-                {/* Acknowledge column removed */}
-              </tr>
-            ))}
+            {paginatedLogs.map((log, idx) => {
+              const alarmTone = getAlarmTone(log.alert);
+              const dateParts = formatLogDateParts(log.date);
+
+              return (
+                <tr key={log.id || idx}>
+                  <td className="log-date-cell">
+                    <span>{dateParts.date}</span>
+                    {dateParts.time ? <span>{dateParts.time}</span> : null}
+                  </td>
+                  <td className="log-room-cell">{formatRoomLabel(log.room)}</td>
+                  <td>
+                    <span className={`alarm-chip ${alarmTone}`}>
+                      <span className="alarm-chip-icon" aria-hidden="true" />
+                      <span className="alarm-chip-text">
+                        {formatAlarmText(log.alert)}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="font-mono">{log.temperature}</td>
+                  <td className="font-mono">{log.humidity}</td>
+                  <td className="text-[#71717a]">{log.flame}</td>
+                  <td className="font-mono">{log.smoke}</td>
+                  <td className={`font-mono co-value ${alarmTone}`}>
+                    {log.carbonMonoxide}
+                  </td>
+                  <td className="text-[#71717a]">{log.entryType}</td>
+                  <td>{log.reportedBy}</td>
+                  <td className="log-notes-cell">{log.notes}</td>
+                </tr>
+              );
+            })}
             {paginatedLogs.length === 0 && (
               <tr>
-                <td colSpan={11} className="text-center py-6 text-gray-400">
+                <td colSpan={11} className="py-6 text-center text-[#a1a1aa]">
                   No logs found.
                 </td>
               </tr>
@@ -231,33 +230,47 @@ export default function LogsTable({ logs }) {
         </table>
       </div>
       {/* Pagination Controls */}
-      <div className="flex justify-between items-center mt-4">
-        <div></div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-gray-500">
-            {filteredLogs.length === 0
-              ? "Showing 0 records"
-              : `Showing ${(page - 1) * rowsPerPage + 1}-${Math.min(
-                  page * rowsPerPage,
-                  filteredLogs.length,
-                )} of ${filteredLogs.length} records`}
-          </span>
+      <div className="pagination">
+        <div className="page-info">
+          {filteredLogs.length === 0
+            ? "Showing 0 entries"
+            : `Showing ${(page - 1) * rowsPerPage + 1}-${Math.min(
+                page * rowsPerPage,
+                filteredLogs.length,
+              )} of ${filteredLogs.length} entries`}
+        </div>
+        <div className="page-btns">
           <button
-            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs"
+            className="page-btn"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
+            type="button"
           >
-            Previous
+            &larr;
           </button>
-          <span className="text-sm text-gray-700">
-            Page {page} of {totalPages || 1}
-          </span>
+          {pageItems.map((item) =>
+            typeof item === "number" ? (
+              <button
+                key={item}
+                className={`page-btn ${page === item ? "active" : ""}`}
+                onClick={() => setPage(item)}
+                type="button"
+              >
+                {item}
+              </button>
+            ) : (
+              <span key={item} className="page-btn page-ellipsis">
+                ...
+              </span>
+            ),
+          )}
           <button
-            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs"
+            className="page-btn"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages || totalPages === 0}
+            type="button"
           >
-            Next
+            &rarr;
           </button>
         </div>
       </div>

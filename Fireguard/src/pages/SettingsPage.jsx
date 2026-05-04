@@ -540,11 +540,11 @@ export default function SettingsPage() {
     return {
       label: isOnline ? "Online" : "Offline",
       tone: isOnline
-        ? "bg-indigo-50 text-indigo-600"
+        ? "bg-green-50 text-green-700"
         : "bg-slate-100 text-slate-500",
-      dot: isOnline ? "bg-indigo-500" : "bg-slate-400",
+      dot: isOnline ? "bg-green-600" : "bg-slate-400",
       iconWrap: isOnline
-        ? "bg-indigo-50 text-indigo-600"
+        ? "bg-green-50 text-green-700"
         : "bg-slate-100 text-slate-500",
     };
   };
@@ -558,38 +558,61 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold uppercase tracking-tight text-slate-950">
-          Settings
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Manage room setup and emergency contacts.
-        </p>
+    <div className="fg-page">
+      <div className="fg-page-head">
+        <div>
+          <div className="fg-eyebrow">System Control</div>
+          <div className="fg-heading">Settings</div>
+          <div className="fg-description">
+            Configure paired sensor nodes, response contacts, and database
+            backup tools.
+          </div>
+        </div>
       </div>
 
       {/* Admin Only Section - Room Management */}
       {userRole === "admin" && (
         <>
-          <div className="grid gap-8 xl:grid-cols-2">
-            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-              <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="control-strip">
+            <div className="control-tile">
+              <div className="control-label">Installed Rooms</div>
+              <div className="control-value">{rooms.length}</div>
+              <div className="control-sub">Auto-registered sensor nodes</div>
+            </div>
+            <div className="control-tile">
+              <div className="control-label">Emergency Contacts</div>
+              <div className="control-value">{phoneNumbers.length}</div>
+              <div className="control-sub">SMS and response numbers</div>
+            </div>
+            <div className="control-tile">
+              <div className="control-label">Backup Status</div>
+              <div className="control-value">
+                <span className="h-2 w-2 rounded-full bg-[#16803c]" />
+                Ready
+              </div>
+              <div className="control-sub">Password verification enabled</div>
+            </div>
+          </div>
+
+          <div className="settings-grid-v2">
+            <section className="settings-card-v2">
+              <div className="fg-card-head">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800 text-white shadow-sm">
+                  <div className="fg-icon-box">
                     <FaHome className="text-lg" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                    <h3 className="fg-card-title">
                       Room Management
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="fg-card-sub">
                       Configure and manage your monitored rooms
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4 p-4 sm:p-5">
+              <div className="fg-card-body space-y-3">
                 {rooms.length === 0 && (
                   <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
                     No rooms found.
@@ -736,24 +759,24 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-              <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <section className="settings-card-v2">
+              <div className="fg-card-head">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-white shadow-sm">
+                  <div className="fg-icon-box red">
                     <FaPhone className="text-lg" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                    <h3 className="fg-card-title">
                       Emergency Contacts
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="fg-card-sub">
                       Manage SMS notifications and emergency hotlines
                     </p>
                   </div>
                 </div>
 
                 <button
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
+                  className="fg-btn fg-btn-primary"
                   onClick={openAddPhoneModal}
                 >
                   <FaPlus className="text-sm" />
@@ -761,7 +784,7 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <div className="space-y-4 p-4 sm:p-5">
+              <div className="fg-card-body space-y-3">
                 {phoneNumbers.length === 0 && (
                   <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
                     No phone numbers found.
@@ -817,17 +840,17 @@ export default function SettingsPage() {
             </section>
           </div>
 
-          <section className="mt-8 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-            <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <section className="settings-card-v2 full mt-[18px]">
+            <div className="fg-card-head">
               <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+                <div className="fg-icon-box">
                   <FaDatabase className="text-lg" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold uppercase tracking-tight text-slate-950">
+                  <h3 className="fg-card-title">
                     Backup & Restore
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="fg-card-sub">
                     Export or restore system database records.
                   </p>
                 </div>
@@ -849,7 +872,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={handleDownloadBackup}
                   disabled={backupBusy || restoreBusy}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+                  className="fg-btn fg-btn-dark w-full sm:w-fit"
                 >
                   <FaDownload className="text-sm" />
                   {backupBusy ? "Preparing..." : "Download Backup"}
@@ -885,7 +908,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => backupFileInputRef.current?.click()}
                   disabled={backupBusy || restoreBusy}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+                  className="fg-btn fg-btn-primary w-full sm:w-fit"
                 >
                   <FaUpload className="text-sm" />
                   {restoreBusy ? "Restoring..." : "Choose Backup File"}

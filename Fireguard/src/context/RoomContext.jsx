@@ -33,7 +33,7 @@ export function RoomProvider({ children }) {
           try {
             const parsedDate = new Date(sensor.timestamp.replace(" ", "T"));
             sensorTimestamp = parsedDate.getTime();
-          } catch (e) {
+          } catch {
             sensorTimestamp = now;
           }
         }
@@ -98,13 +98,15 @@ export function RoomProvider({ children }) {
     const interval = setInterval(() => {
       const now = Date.now();
       const OFFLINE_THRESHOLD = 60000; // 1 minute in milliseconds
-      setRooms((current) =>
-        current.map((room) => {
+      setRooms((current) => {
+        let changed = false;
+        const nextRooms = current.map((room) => {
           const timeSinceUpdate = now - (room.lastUpdated || now);
           const isNowOffline = timeSinceUpdate > OFFLINE_THRESHOLD;
 
           // If the room just went offline, mark it Offline and zero readings
           if (isNowOffline && !room.isOffline) {
+            changed = true;
             // Auto-silence the room in Firebase when it goes offline
             if (room.nodeId) {
               update(ref(db, `sensor_data/${room.nodeId}`), {
@@ -131,6 +133,7 @@ export function RoomProvider({ children }) {
           // If the room came back online, clear the offline flag and restore status
           // (actual sensor values will be overwritten by the realtime listener)
           if (!isNowOffline && room.isOffline) {
+            changed = true;
             return {
               ...room,
               isOffline: false,
@@ -139,8 +142,10 @@ export function RoomProvider({ children }) {
           }
 
           return room;
-        }),
-      );
+        });
+
+        return changed ? nextRooms : current;
+      });
     }, 5000); // Check every 5 seconds
     return () => clearInterval(interval);
   }, []);

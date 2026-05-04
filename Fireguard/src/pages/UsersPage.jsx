@@ -1,6 +1,16 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { FaTrash, FaUser, FaEnvelope, FaShieldAlt } from "react-icons/fa";
-import { X, UserPlus } from "lucide-react";
+import {
+  Check,
+  Mail,
+  Pencil,
+  Plus,
+  Search,
+  Shield,
+  Trash2,
+  User as UserIcon,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { firestore, auth } from "../firebase";
 import {
   collection,
@@ -8,7 +18,6 @@ import {
   query,
   orderBy,
   doc,
-  deleteDoc,
   updateDoc,
   setDoc,
   serverTimestamp,
@@ -18,7 +27,6 @@ import {
   updateProfile,
   signOut,
 } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import emailjs from "@emailjs/browser";
 
@@ -46,7 +54,7 @@ function formatDate(ts) {
   try {
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return d.toLocaleString();
-  } catch (e) {
+  } catch {
     return String(ts);
   }
 }
@@ -61,14 +69,69 @@ function initials(name, email) {
   return "U";
 }
 
+function roleLabel(role) {
+  const normalized = (role || "user").toLowerCase();
+  if (normalized === "admin") return "Administrator";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function avatarColor(role) {
+  const normalized = (role || "user").toLowerCase();
+  if (normalized === "admin") return "#bf2d2d";
+  if (normalized === "operator") return "#1d4ed8";
+  return "#71717a";
+}
+
+function roleBadgeClass(role) {
+  const normalized = (role || "user").toLowerCase();
+  if (normalized === "admin") {
+    return "border-[#fecaca] bg-[#fef2f2] text-[#bf2d2d]";
+  }
+  if (normalized === "operator") {
+    return "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]";
+  }
+  return "border-[#e4e4e0] bg-[#f4f4f2] text-[#71717a]";
+}
+
+const rolePermissionRows = [
+  {
+    permission: "View Dashboard & Alerts",
+    admin: "Yes",
+    user: "Yes",
+  },
+  {
+    permission: "View Logs",
+    admin: "Yes",
+    user: "Yes",
+  },
+  {
+    permission: "Add Manual Records",
+    admin: "Yes",
+    user: "Yes",
+  },
+  {
+    permission: "Manage Rooms & Nodes",
+    admin: "Yes",
+    user: "No",
+  },
+  {
+    permission: "Manage Users",
+    admin: "Yes",
+    user: "No",
+  },
+  {
+    permission: "System Settings",
+    admin: "Yes",
+    user: "No",
+  },
+];
+
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const navigate = useNavigate();
   const { showToast } = useToast();
-  const [openMenuId, setOpenMenuId] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState("user");
@@ -126,255 +189,307 @@ export default function UsersPage() {
     return { total, admins, regular };
   }, [users]);
 
+  const filterButtonClass = (value) =>
+    `h-9 rounded-lg border px-3 text-xs font-medium transition-colors ${
+      roleFilter === value
+        ? "border-[#fecaca] bg-[#fef2f2] text-[#bf2d2d]"
+        : "border-[#e4e4e0] bg-white text-[#71717a] hover:bg-[#fafaf8] hover:text-[#18181b]"
+    }`;
+
+  const openEditUser = (user) => {
+    setEditingUser(user);
+    setEditName(user.displayName || "");
+    setEditRole(user.role || "user");
+  };
+
+  const openDeleteConfirm = (user) => {
+    const currentUid = auth?.currentUser?.uid;
+    if (currentUid && user.id === currentUid) {
+      alert("You cannot delete the currently signed-in user.");
+      return;
+    }
+    setDeleteConfirm({ open: true, user });
+  };
+
   return (
-    <div className="p-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div
+      className="min-h-full p-4 text-[#18181b] sm:p-6 lg:p-[30px]"
+      style={{
+        background:
+          "radial-gradient(circle at top left, rgba(191,45,45,0.045), transparent 34%), linear-gradient(180deg, #f7f6f3 0%, #efeeeb 100%)",
+      }}
+    >
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Users</h1>
-          <p className="text-sm text-gray-500">
-            Manage your team members and their account permissions
+          <div className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-[#a1a1aa]">
+            Access Control
+          </div>
+          <h1 className="text-2xl font-bold leading-tight tracking-normal text-[#18181b]">
+            Team Members
+          </h1>
+          <p className="mt-2 max-w-2xl text-[13.5px] leading-6 text-[#71717a]">
+            Manage access and permissions for your monitoring team.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="hidden sm:flex items-center bg-white border rounded-md px-3 py-2 shadow-sm">
-            <svg
-              className="w-4 h-4 text-gray-400 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
-              ></path>
-            </svg>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by name or email..."
-              className="outline-none text-sm"
-            />
-          </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={() => setRoleFilter("all")}
-              className={`px-3 py-1 rounded-full border ${
-                roleFilter === "all"
-                  ? "bg-red-50 text-red-700"
-                  : "text-gray-600 bg-white"
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setRoleFilter("admin")}
-              className={`px-3 py-1 rounded-full border ${
-                roleFilter === "admin"
-                  ? "bg-red-50 text-red-700"
-                  : "text-gray-600 bg-white"
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              onClick={() => setRoleFilter("user")}
-              className={`px-3 py-1 rounded-full border ${
-                roleFilter === "user"
-                  ? "bg-red-50 text-red-700"
-                  : "text-gray-600 bg-white"
-              }`}
-            >
-              User
-            </button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-2 font-mono text-[11px] text-[#71717a]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#16803c] shadow-[0_0_0_3px_#f0fdf4]" />
+            Live roster
           </div>
           <button
+            type="button"
             onClick={() => setAddUserModal(true)}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition-colors font-medium text-sm sm:text-base whitespace-nowrap"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#bf2d2d] bg-[#bf2d2d] px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(191,45,45,0.16)] transition-colors hover:bg-[#a52424]"
           >
-            Add User
+            <Plus className="h-4 w-4" />
+            Invite User
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Total Users</div>
-          <div className="text-2xl font-semibold">{totals.total}</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Administrators</div>
-          <div className="text-2xl font-semibold">{totals.admins}</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Regular Users</div>
-          <div className="text-2xl font-semibold">{totals.regular}</div>
+      <div className="mb-5 rounded-xl border border-[rgba(24,24,27,0.075)] bg-white/90 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.055)]">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-[#eeeeeb] bg-[#fafaf8] px-3 py-2">
+              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#a1a1aa]">
+                Total
+              </div>
+              <div className="mt-1 font-mono text-xl text-[#18181b]">
+                {totals.total}
+              </div>
+            </div>
+            <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2">
+              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#bf2d2d]">
+                Admin
+              </div>
+              <div className="mt-1 font-mono text-xl text-[#bf2d2d]">
+                {totals.admins}
+              </div>
+            </div>
+            <div className="rounded-lg border border-[#eeeeeb] bg-[#fafaf8] px-3 py-2">
+              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#a1a1aa]">
+                Users
+              </div>
+              <div className="mt-1 font-mono text-xl text-[#18181b]">
+                {totals.regular}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#e4e4e0] bg-[#fafaf8] px-3 sm:w-72">
+              <Search className="h-4 w-4 flex-none text-[#a1a1aa]" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search name or email"
+                className="w-full min-w-0 bg-transparent text-sm text-[#18181b] outline-none placeholder:text-[#a1a1aa]"
+              />
+            </label>
+            <div className="grid grid-cols-3 gap-2 sm:flex">
+              <button
+                type="button"
+                onClick={() => setRoleFilter("all")}
+                className={filterButtonClass("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("admin")}
+                className={filterButtonClass("admin")}
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("user")}
+                className={filterButtonClass("user")}
+              >
+                User
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-500">Loading users...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((u) => (
+        <div className="grid grid-cols-1 gap-[13px] md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
             <div
-              key={u.id}
-              className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between relative"
+              key={index}
+              className="h-[170px] animate-pulse rounded-xl border border-[#e4e4e0] bg-white/75 p-5"
             >
               <div className="flex items-center gap-4">
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold`}
-                  style={{
-                    backgroundColor: u.role === "admin" ? "#dc2626" : "#6b7280",
-                  }}
-                >
-                  {initials(u.displayName, u.email)}
-                </div>
-                <div>
-                  <div className="text-lg font-semibold">
-                    {u.displayName || u.email || "User"}
-                  </div>
-                  <div className="text-sm text-gray-500">{u.email || "-"}</div>
-                  <div className="mt-2">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${
-                        u.role === "admin"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {u.role || "user"}
-                    </span>
-                    <span className="text-xs text-gray-400 ml-3">
-                      Joined {formatDate(u.createdAt)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="relative inline-block text-left">
-                  <button
-                    onClick={() =>
-                      setOpenMenuId(openMenuId === u.id ? null : u.id)
-                    }
-                    className="p-2 rounded-full hover:bg-gray-100"
-                    aria-haspopup="true"
-                    aria-expanded={openMenuId === u.id}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-gray-500"
-                    >
-                      <circle cx="12" cy="5" r="1"></circle>
-                      <circle cx="12" cy="12" r="1"></circle>
-                      <circle cx="12" cy="19" r="1"></circle>
-                    </svg>
-                  </button>
-
-                  {openMenuId === u.id && (
-                    <div
-                      className="absolute right-0 mt-2 w-36 bg-white rounded-lg shadow-sm z-20"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => {
-                          setEditingUser(u);
-                          setEditName(u.displayName || "");
-                          setEditRole(u.role || "user");
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 shadow-sm"
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-gray-600"
-                        >
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"></path>
-                        </svg>
-                        Edit
-                      </button>
-                      <button
-                        onClick={async () => {
-                          setOpenMenuId(null);
-                          // Prevent deleting the currently signed-in user
-                          const currentUid = auth?.currentUser?.uid;
-                          if (currentUid && u.id === currentUid) {
-                            alert(
-                              "You cannot delete the currently signed-in user.",
-                            );
-                            return;
-                          }
-                          setDeleteConfirm({ open: true, user: u });
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-red-500"
-                        >
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"></path>
-                          <path d="M10 11v6"></path>
-                          <path d="M14 11v6"></path>
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  )}
+                <div className="h-12 w-12 rounded-full bg-[#eeeeeb]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/2 rounded bg-[#eeeeeb]" />
+                  <div className="h-3 w-3/4 rounded bg-[#eeeeeb]" />
+                  <div className="h-5 w-24 rounded bg-[#eeeeeb]" />
                 </div>
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-[13px]">
+            {filtered.length === 0 && (
+              <div className="col-span-full rounded-xl border border-[#e4e4e0] bg-white/90 p-8 text-center shadow-[0_12px_28px_rgba(15,23,42,0.055)]">
+                <div className="text-sm font-semibold text-[#18181b]">
+                  No users found
+                </div>
+                <div className="mt-1 text-xs text-[#71717a]">
+                  Try another search term or role filter.
+                </div>
+              </div>
+            )}
+
+            {filtered.map((u) => (
+              <article
+                key={u.id}
+                className="flex min-h-[172px] items-start gap-3.5 rounded-xl border border-[rgba(24,24,27,0.075)] bg-white/95 p-5 shadow-[0_12px_28px_rgba(15,23,42,0.055)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.09)]"
+              >
+                <div
+                  className="flex h-12 w-12 flex-none items-center justify-center rounded-full text-base font-semibold text-white"
+                  style={{ backgroundColor: avatarColor(u.role) }}
+                >
+                  {initials(u.displayName, u.email)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold tracking-normal text-[#18181b]">
+                    {u.displayName || u.email || "User"}
+                  </div>
+                  <div className="mt-0.5 truncate text-xs text-[#a1a1aa]">
+                    {u.email || "-"}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex rounded px-2 py-0.5 font-mono text-[10px] font-medium ${roleBadgeClass(
+                        u.role,
+                      )}`}
+                    >
+                      {roleLabel(u.role)}
+                    </span>
+                    <span className="font-mono text-[10px] text-[#a1a1aa]">
+                      Joined {formatDate(u.createdAt)}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openEditUser(u)}
+                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#e4e4e0] bg-[#fafaf8] px-2.5 text-[11px] font-medium text-[#71717a] transition-colors hover:border-[#71717a]"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openDeleteConfirm(u)}
+                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#fecaca] bg-[#fef2f2] px-2.5 text-[11px] font-medium text-[#bf2d2d] transition-colors hover:bg-[#fee2e2]"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setAddUserModal(true)}
+              className="min-h-[172px] rounded-xl border-[1.5px] border-dashed border-[#e4e4e0] bg-[#fafaf8] p-7 text-center transition-colors hover:border-[#bf2d2d] hover:bg-[#fef2f2]"
+            >
+              <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#eeeeeb] text-[#a1a1aa]">
+                <Plus className="h-[18px] w-[18px]" />
+              </span>
+              <span className="block text-[13px] font-medium text-[#71717a]">
+                Invite a team member
+              </span>
+              <span className="mt-1 block text-[11px] text-[#a1a1aa]">
+                Grant access to monitoring staff
+              </span>
+            </button>
+          </div>
+
+          <div className="mt-7">
+            <div className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[#a1a1aa]">
+              Role Permissions
+            </div>
+            <div className="overflow-hidden rounded-xl border border-[#e4e4e0] bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.055)]">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
+                        Permission
+                      </th>
+                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
+                        Administrator
+                      </th>
+                      <th className="whitespace-nowrap border-b border-[#eeeeeb] bg-[#fbfbf9] px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[#a1a1aa]">
+                        User
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rolePermissionRows.map((row) => (
+                      <tr
+                        key={row.permission}
+                        className="transition-colors hover:bg-[#fafaf8]"
+                      >
+                        <td className="border-b border-[#eeeeeb] px-4 py-3 text-sm font-medium text-[#18181b]">
+                          {row.permission}
+                        </td>
+                        {["admin", "user"].map((roleKey) => {
+                          const value = row[roleKey];
+                          const allowed = value === "Yes";
+                          return (
+                            <td
+                              key={roleKey}
+                              className={`border-b border-[#eeeeeb] px-4 py-3 text-sm font-medium ${
+                                allowed ? "text-[#16803c]" : "text-[#bf2d2d]"
+                              }`}
+                            >
+                              <span className="inline-flex items-center gap-1.5">
+                                {allowed ? (
+                                  <Check className="h-3.5 w-3.5" />
+                                ) : (
+                                  <X className="h-3.5 w-3.5" />
+                                )}
+                                {value}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Edit modal */}
       {editingUser && (
         <div
-          className="fixed inset-0 bg-transparent flex items-center justify-center z-[9999]"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm"
           onClick={() => setEditingUser(null)}
         >
           <div
-            className="w-full max-w-lg rounded-lg overflow-hidden shadow-lg"
+            className="w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="px-6 py-5 bg-gradient-to-r from-red-600 to-red-700 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4z"></path>
-                    <path d="M6 20v-1a4 4 0 014-4h4a4 4 0 014 4v1"></path>
-                  </svg>
+                  <UserIcon className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">Edit User</div>
@@ -388,15 +503,7 @@ export default function UsersPage() {
                 className="text-white/90 hover:text-white"
                 aria-label="Close"
               >
-                <svg
-                  className="w-5 h-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -406,10 +513,7 @@ export default function UsersPage() {
               <div className="bg-gray-50 rounded-xl p-4 mb-5 flex items-center gap-4 border">
                 <div
                   className={`w-12 h-12 rounded-lg flex items-center justify-center text-white font-semibold`}
-                  style={{
-                    backgroundColor:
-                      editingUser.role === "admin" ? "#dc2626" : "#6b7280",
-                  }}
+                  style={{ backgroundColor: avatarColor(editingUser.role) }}
                 >
                   {initials(editingUser.displayName, editingUser.email)}
                 </div>
@@ -425,16 +529,7 @@ export default function UsersPage() {
               </label>
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-gray-100 rounded-md">
-                  <svg
-                    className="w-5 h-5 text-gray"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4z"></path>
-                    <path d="M6 20v-1a4 4 0 014-4h4a4 4 0 014 4v1"></path>
-                  </svg>
+                  <UserIcon className="h-5 w-5 text-gray-500" />
                 </div>
                 <input
                   className="flex-1 border border-gray-200 rounded-md px-3 py-2"
@@ -497,13 +592,13 @@ export default function UsersPage() {
       {/* Add User Modal */}
       {addUserModal && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-transparent"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           onClick={() => setAddUserModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 overflow-hidden"
+            className="max-w-md w-full overflow-hidden rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with gradient */}
@@ -537,7 +632,7 @@ export default function UsersPage() {
                 </label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <FaUser className="w-4 h-4" />
+                    <UserIcon className="h-4 w-4" />
                   </div>
                   <input
                     type="text"
@@ -559,7 +654,7 @@ export default function UsersPage() {
                 </label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <FaEnvelope className="w-4 h-4" />
+                    <Mail className="h-4 w-4" />
                   </div>
                   <input
                     type="email"
@@ -580,7 +675,7 @@ export default function UsersPage() {
                 </label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <FaShieldAlt className="w-4 h-4" />
+                    <Shield className="h-4 w-4" />
                   </div>
                   <input
                     type="text"
@@ -628,9 +723,6 @@ export default function UsersPage() {
                     }
                     setCreatingUser(true);
                     try {
-                      // Store current user before creating new user
-                      const currentUser = auth.currentUser;
-
                       // Generate temporary password
                       const tempPassword = generateTemporaryPassword();
 
@@ -711,19 +803,19 @@ export default function UsersPage() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm.open && deleteConfirm.user && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-transparent"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           onClick={() => setDeleteConfirm({ open: false, user: null })}
         >
           <div
-            className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-6"
+            className="max-w-lg w-full rounded-2xl bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Icon + Title */}
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100">
-                <FaTrash className="w-4 h-4 text-red-500" />
+                <Trash2 className="h-4 w-4 text-red-500" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">

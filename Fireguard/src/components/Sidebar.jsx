@@ -1,7 +1,5 @@
 import React, {
   useState,
-  useEffect,
-  useRef,
   createContext,
   useContext,
 } from "react";
@@ -10,7 +8,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   PanelLeftOpen,
   PanelLeftClose,
-  MoreVertical,
   LayoutDashboard,
   BookText,
   BarChart3,
@@ -18,10 +15,9 @@ import {
   Settings,
   User,
   LogOut,
+  Flame,
 } from "lucide-react";
-import FireguardImg from "../assets/fireguard-logo.png";
 import { useNotification } from "../context/NotificationContext";
-import bgAlpha from "../assets/bg-alpha.jpg";
 
 const SidebarContext = createContext();
 
@@ -30,7 +26,7 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { dashboardAlert, logsAlert } = useNotification();
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
 
   const navItems = [
     {
@@ -39,6 +35,7 @@ export default function Sidebar() {
       icon: <LayoutDashboard size={20} />,
       active: location.pathname === "/",
       alert: dashboardAlert,
+      group: "Monitor",
     },
     {
       path: "/logs",
@@ -46,12 +43,14 @@ export default function Sidebar() {
       icon: <BookText size={20} />,
       active: location.pathname === "/logs",
       alert: logsAlert,
+      group: "Monitor",
     },
     {
       path: "/analytics",
       text: "Reports",
       icon: <BarChart3 size={20} />,
       active: location.pathname === "/analytics",
+      group: "Monitor",
     },
     {
       path: "/users",
@@ -59,6 +58,7 @@ export default function Sidebar() {
       icon: <UserCircle2 size={20} />,
       active: location.pathname === "/users",
       adminOnly: true,
+      group: "Admin",
     },
     {
       path: "/settings",
@@ -66,28 +66,26 @@ export default function Sidebar() {
       icon: <Settings size={20} />,
       active: location.pathname === "/settings",
       adminOnly: true,
+      group: "Admin",
+    },
+    {
+      path: "/profile",
+      text: "Profile",
+      icon: <User size={20} />,
+      active: location.pathname === "/profile",
+      group: "Admin",
     },
   ];
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { signOut } = useAuth();
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.adminOnly) {
+      return !loading && role === "admin";
     }
-
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+    if (item.userOnly) {
+      return !loading && role !== "admin";
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [menuOpen]);
+    return true;
+  });
 
   const displayLabel = user?.displayName || user?.email?.split("@")[0] || "User";
   const initials = (() => {
@@ -113,115 +111,78 @@ export default function Sidebar() {
           expanded ? "fixed inset-y-0 left-0 z-50 md:relative" : "relative"
         } ${expanded ? "w-64" : "w-20"}`}
       >
-        <nav
-          className="h-full flex flex-col border-r-blue-50 shadow-[8px_0_17px_rgba(0,0,0,0.07)] relative"
-          style={{
-            backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4)), url(${bgAlpha})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        >
-          <div className="p-4 pb-2 flex justify-between items-center relative z-10">
-            <img
-              src={FireguardImg}
-              className={`transition-all duration-300 ease-in-out ${
-                expanded ? "w-50" : "w-20"
-              }`}
-              alt="Fireguard Logo"
-            />
+        <nav className="relative flex h-full flex-col border-r border-[#e4e4e0] bg-white shadow-[8px_0_30px_rgba(15,23,42,0.035)]">
+          <div className="relative flex items-center gap-2.5 border-b border-[#eeeeeb] px-[18px] py-5">
+            <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[9px] bg-[#bf2d2d] text-white shadow-[0_2px_8px_rgba(191,45,45,0.25)]">
+              <Flame className="h-[17px] w-[17px]" fill="currentColor" />
+            </div>
+            {expanded && (
+              <div className="min-w-0">
+                <div className="text-sm font-semibold tracking-normal text-[#18181b]">
+                  FireGuard
+                </div>
+                <div className="mt-px font-mono text-[10px] uppercase tracking-[0.05em] text-[#a1a1aa]">
+                  Fire Alarm Monitoring
+                </div>
+              </div>
+            )}
             <button
               onClick={() => setExpanded((curr) => !curr)}
-              className={`transition-all duration-300 cursor-pointer ease-in-out p-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 ${
-                expanded
-                  ? "absolute -left-2 mt-10 ml-62"
-                  : "absolute -left-2 mt-10 ml-19"
-              }`}
+              className="absolute -right-3 top-7 flex h-7 w-7 items-center justify-center rounded-lg border border-[#e4e4e0] bg-white text-[#71717a] shadow-sm transition-colors hover:bg-[#fafaf8]"
+              aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
             >
               {expanded ? (
-                <PanelLeftClose size={20} className="text-white" />
+                <PanelLeftClose size={16} />
               ) : (
-                <PanelLeftOpen size={20} className="text-white" />
+                <PanelLeftOpen size={16} />
               )}
             </button>
           </div>
 
           <SidebarContext.Provider value={{ expanded }}>
-            <ul className="flex-1 px-3 relative z-10">
-              {navItems
-                .filter((item) => {
-                  if (item.adminOnly) {
-                    // while loading, hide admin-only links; only show when role === 'admin'
-                    return !loading && role === "admin";
-                  }
-                  if (item.userOnly) {
-                    // Show only for non-admin users
-                    return !loading && role !== "admin";
-                  }
-                  return true;
-                })
-                .map((item) => (
-                  <SidebarItem
-                    key={item.path}
-                    icon={item.icon}
-                    text={item.text}
-                    to={item.path}
-                    active={item.active}
-                    alert={item.alert}
-                  />
-                ))}
+            <ul className="relative z-10 flex-1 px-2.5 py-5">
+              {["Monitor", "Admin"].map((group) => {
+                const groupItems = visibleNavItems.filter(
+                  (item) => item.group === group,
+                );
+                if (groupItems.length === 0) return null;
+                return (
+                  <React.Fragment key={group}>
+                    {expanded && (
+                      <li className="px-2 pb-2 pt-2 font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-[#a1a1aa] first:pt-0">
+                        {group}
+                      </li>
+                    )}
+                    {groupItems.map((item) => (
+                      <SidebarItem
+                        key={item.path}
+                        icon={item.icon}
+                        text={item.text}
+                        to={item.path}
+                        active={item.active}
+                        alert={item.alert}
+                      />
+                    ))}
+                  </React.Fragment>
+                );
+              })}
             </ul>
           </SidebarContext.Provider>
 
-          <div
-            className={`relative z-10 px-3 pb-4 ${
-              expanded ? "" : "flex justify-center"
-            }`}
-            ref={menuRef}
-          >
-            {menuOpen && expanded && (
-              <div className="absolute bottom-[4.6rem] left-3 right-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.24)]">
-                <button
-                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-slate-800 transition-colors hover:bg-slate-50"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    navigate("/profile");
-                  }}
-                >
-                  <User size={15} className="text-slate-400" />
-                  <span className="text-sm font-medium leading-none">
-                    Profile
-                  </span>
-                </button>
-                <div className="mx-4 h-px bg-slate-100" />
-                <button
-                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-red-600 transition-colors hover:bg-red-50"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    signOut();
-                  }}
-                >
-                  <LogOut size={15} />
-                  <span className="text-sm font-medium leading-none">
-                    Log out
-                  </span>
-                </button>
-              </div>
-            )}
-
-            <div
-              className={`flex items-center rounded-2xl border border-white/8 bg-white/8 backdrop-blur-sm transition-all duration-300 ease-in-out ${
-                expanded
-                  ? "w-full justify-between gap-3 px-3 py-3"
-                  : "h-14 w-14 justify-center p-0"
+          <div className="border-t border-[#eeeeeb] p-4">
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className={`flex w-full items-center rounded-xl transition-colors hover:bg-[#fafaf8] ${
+                expanded ? "gap-2.5 p-2" : "justify-center p-1"
               }`}
             >
               <div
                 className={`flex items-center ${
-                  expanded ? "min-w-0 gap-3 overflow-hidden" : "justify-center"
+                  expanded ? "min-w-0 gap-2.5 overflow-hidden" : "justify-center"
                 }`}
               >
-                <div className="flex h-11 w-11 min-w-[2.75rem] flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/15">
+                <div className="flex h-8 w-8 min-w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#bf2d2d] text-white">
                   {user?.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -229,36 +190,38 @@ export default function Sidebar() {
                       className="h-full w-full object-cover"
                     />
                   ) : user?.displayName || user?.email ? (
-                    <span className="block text-sm font-semibold leading-none text-white">
+                    <span className="block text-[11px] font-semibold leading-none">
                       {initials}
                     </span>
                   ) : (
-                    <User size={16} className="text-white" />
+                    <User size={15} />
                   )}
                 </div>
 
                 {expanded && (
-                  <div className="min-w-0 overflow-hidden transition-all duration-300 ease-in-out w-40 opacity-100">
-                    <h4 className="truncate text-sm font-semibold text-white">
+                  <div className="min-w-0 overflow-hidden text-left transition-all duration-300 ease-in-out">
+                    <h4 className="truncate text-[13px] font-medium text-[#18181b]">
                       {displayLabel}
                     </h4>
-                    <span className="block truncate text-xs text-slate-300">
-                      {user?.email || ""}
+                    <span className="block truncate text-[11px] text-[#a1a1aa]">
+                      {role
+                        ? role.charAt(0).toUpperCase() + role.slice(1)
+                        : user?.email || ""}
                     </span>
                   </div>
                 )}
               </div>
+            </button>
 
-              {expanded && (
-                <button
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  aria-label="Open account menu"
-                >
-                  <MoreVertical size={16} />
-                </button>
-              )}
-            </div>
+            {expanded && (
+              <button
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-xs font-semibold text-[#bf2d2d] transition-colors hover:bg-[#fee2e2]"
+                onClick={signOut}
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
+            )}
           </div>
         </nav>
       </aside>
@@ -274,23 +237,23 @@ function SidebarItem({ icon, text, to, active, alert }) {
     <li className="mb-1">
       <Link
         to={to}
-        className={`relative flex items-center py-2 px-4 my-1 font-medium rounded-md cursor-pointer transition-all duration-300 ease-in-out ${
+        className={`relative my-px flex items-center rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-all duration-150 ${
           active
-            ? "bg-white/20 text-white backdrop-blur-sm"
-            : "hover:bg-white/10 text-white/80"
+            ? "bg-[#fef2f2] text-[#bf2d2d]"
+            : "text-[#71717a] hover:bg-[#fafaf8] hover:text-[#18181b]"
         }`}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        <div className="min-w-[20px]">{icon}</div>
+        <div className="min-w-[20px] opacity-80">{icon}</div>
         {/* Expanded: show text inline. Collapsed: show tooltip on hover. */}
         {expanded ? (
-          <span className="overflow-hidden transition-all duration-300 ease-in-out w-52 ml-3 opacity-100">
+          <span className="ml-2.5 w-52 overflow-hidden transition-all duration-300 ease-in-out">
             {text}
           </span>
         ) : (
           hovered && (
-            <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-gray-900 text-white rounded-md shadow-lg z-10 whitespace-nowrap border border-gray-700">
+            <span className="absolute left-full top-1/2 z-10 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-[#e4e4e0] bg-white px-3 py-1 text-[#18181b] shadow-lg">
               {text}
             </span>
           )
@@ -298,9 +261,9 @@ function SidebarItem({ icon, text, to, active, alert }) {
         {/* Alert dot: on top of icon when collapsed, at side when expanded */}
         {alert &&
           (expanded ? (
-            <div className="absolute right-2 w-2 h-2 rounded bg-red-500" />
+            <div className="absolute right-2 h-2 w-2 rounded-full bg-[#bf2d2d]" />
           ) : (
-            <div className="absolute top-2 left-2/3 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 z-20" />
+            <div className="absolute top-2 left-2/3 z-20 h-2 w-2 -translate-x-1/2 rounded-full bg-[#bf2d2d]" />
           ))}
       </Link>
     </li>

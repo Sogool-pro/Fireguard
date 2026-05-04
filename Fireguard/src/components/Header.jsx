@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaExclamationTriangle } from "react-icons/fa";
-import { Bell, User } from "lucide-react";
+import { Bell, ExternalLink } from "lucide-react";
 import { useRoom } from "../context/RoomContext";
 import { useNotification } from "../context/NotificationContext";
 import { db } from "../firebase";
-import { ref, onValue } from "firebase/database";
-import { useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function Header() {
   const { rooms } = useRoom();
@@ -49,8 +48,14 @@ export default function Header() {
 
   // Fetch last 10 alerts from Firebase
   useEffect(() => {
-    const alertsRef = ref(db, "alerts");
-    const unsub = onValue(alertsRef, (snapshot) => {
+    if (!showNotifications) return undefined;
+
+    const recentAlertsQuery = query(
+      ref(db, "alerts"),
+      orderByChild("timestamp"),
+      limitToLast(10),
+    );
+    const unsub = onValue(recentAlertsQuery, (snapshot) => {
       const data = snapshot.val() || {};
       const alertsArr = Object.entries(data)
         .map(([id, alert]) => ({ ...alert, id }))
@@ -60,7 +65,7 @@ export default function Header() {
       setRecentAlerts(alertsArr);
     });
     return () => unsub();
-  }, []);
+  }, [showNotifications]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -88,20 +93,8 @@ export default function Header() {
     if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
     return date.toLocaleString();
   }
-  const [showDebug, setShowDebug] = useState(false);
   const location = useLocation();
-
-  // Count rooms with alarms
-  const alarmRooms = rooms.filter((room) => {
-    const thresholdAlarm =
-      room.fire ||
-      room.temperature > 55 ||
-      room.smoke > 600 ||
-      room.carbonMonoxide > 70;
-    const alertLevelAlarm =
-      room.alert_level && room.alert_level.toLowerCase() === "alert";
-    return (thresholdAlarm || alertLevelAlarm) && room.silenced !== true;
-  });
+  const navigate = useNavigate();
 
   const pageTitles = {
     "/": "Dashboard",
@@ -113,60 +106,84 @@ export default function Header() {
   };
   const pageTitle = pageTitles[location.pathname] || "Fireguard";
 
-  const { user: authUser, role, loading: authLoading } = useAuth();
+  const topbarDate = new Date()
+    .toLocaleDateString("en-US", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    .toUpperCase();
 
   return (
     <>
-      <header className="bg-red-600 h-16 px-4 flex items-center justify-between border-b border-red-700">
-        {/* Search Bar */}
-        <div className="flex items-center flex-1 max-w-xl">
-          <div className="relative w-full">
-            <h1 className="text-2xl font-bold text-white mb-2 ml-4">
-              {pageTitle}
-            </h1>
-          </div>
+      <header className="relative z-[9000] flex min-h-[62px] items-center justify-between gap-4 border-b border-[#e4e4e0] bg-white/95 px-5 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] backdrop-blur-[18px] md:px-7">
+        <div className="min-w-0">
+          <span className="text-base font-semibold tracking-normal text-[#18181b]">
+            {pageTitle}
+          </span>
+          <span className="ml-2.5 font-mono text-[11px] uppercase tracking-[0.03em] text-[#a1a1aa]">
+            {topbarDate}
+          </span>
         </div>
 
-        {/* Right Side Icons */}
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <a
+            href="tel:0848231773"
+            className="hidden items-center gap-2 rounded-full border border-[#e4e4e0] bg-white px-3 py-2 transition-colors hover:border-[#bf2d2d] hover:bg-[#fef2f2] sm:flex"
+          >
+            <span className="relative h-[7px] w-[7px] rounded-full bg-[#bf2d2d]">
+              <span className="absolute -inset-0.5 rounded-full border border-[#bf2d2d] opacity-60 animate-ping" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-xs font-semibold text-[#bf2d2d]">
+                Panabo City Fire Station
+              </span>
+              <span className="block truncate text-[10px] text-[#a1a1aa]">
+                (084) 823-1773 / 0928-458-7586
+              </span>
+            </span>
+            <ExternalLink className="h-3 w-3 flex-none text-[#bf2d2d]" />
+          </a>
+
           {/* Notifications */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative z-[9100]" ref={notifRef}>
             <button
-              className="relative p-2 hover:bg-red-700 rounded-full"
+              className="relative flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-[#e4e4e0] bg-white text-[#71717a] transition-colors hover:bg-[#fafaf8]"
               onClick={() => {
                 setShowNotifications((v) => !v);
                 setLogsAlert(false);
               }}
               aria-label="Show notifications"
             >
-              <Bell size={20} className="text-white" />
+              <Bell size={16} />
               {logsAlert ? (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border-2 border-white bg-[#bf2d2d]"></span>
               ) : null}
             </button>
             {showNotifications && (
               <>
-                {/* Desktop dropdown (keeps existing absolute behavior for md+ screens) */}
-                <div className="hidden md:block absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto animate-fade-in">
-                  <div className="p-4 font-semibold text-black">
-                    Recent Alerts
+                <div className="fixed right-8 top-[64px] z-[99999] hidden w-[372px] overflow-hidden rounded-[18px] border border-[rgba(24,24,27,0.09)] bg-white shadow-[0_28px_70px_rgba(15,23,42,0.22),0_0_0_1px_rgba(255,255,255,0.72)] md:block">
+                  <div className="flex items-center justify-between border-b border-[#eeeeeb] bg-gradient-to-b from-white to-[#fbfbf9] px-4 py-3.5">
+                    <div className="text-[13px] font-bold tracking-normal text-[#18181b]">
+                      Recent Alerts
+                    </div>
+                    <div className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-1 font-mono text-[10px] text-[#bf2d2d]">
+                      {recentAlerts.length} Latest
+                    </div>
                   </div>
                   {recentAlerts.length === 0 ? (
-                    <div className="p-4 text-gray-500 text-sm">
+                    <div className="p-4 text-sm text-[#71717a]">
                       No recent alerts.
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-100">
+                    <ul className="max-h-[330px] overflow-y-auto">
                       {recentAlerts.map((alert) => (
                         <li
                           key={alert.id}
-                          className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors ${
-                            logsAlert && recentAlerts[0]?.id === alert.id
-                              ? "bg-white font-bold text-gray-900"
-                              : "bg-gray-50 font-normal text-gray-400"
-                          }`}
+                          className="flex gap-3 border-b border-[#eeeeeb] px-4 py-3 transition-colors hover:bg-[#fafaf8]"
                         >
-                          <div className="flex-shrink-0 w-7 h-7 mt-1 flex items-center justify-center">
+                          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border border-[#fecaca] bg-[#fef2f2] text-[#bf2d2d]">
                             {(() => {
                               const level = (
                                 alert.alert_level || ""
@@ -179,8 +196,7 @@ export default function Header() {
                               ) {
                                 return (
                                   <FaExclamationTriangle
-                                    className="w-7 h-7"
-                                    color="#f87171"
+                                    className="h-3.5 w-3.5"
                                     title="Alert"
                                   />
                                 );
@@ -190,8 +206,7 @@ export default function Header() {
                               ) {
                                 return (
                                   <FaExclamationTriangle
-                                    className="w-7 h-7"
-                                    color="#facc15"
+                                    className="h-3.5 w-3.5 text-[#c47d0a]"
                                     title="Warning"
                                   />
                                 );
@@ -200,27 +215,19 @@ export default function Header() {
                               }
                             })()}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium">
-                                {alert.node
-                                  ? `Room ${String(alert.node).replace(
-                                      "NODE",
-                                      "",
-                                    )}`
-                                  : "Unknown Room"}
-                              </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-[#18181b]">
+                              {alert.node
+                                ? `Room ${String(alert.node).replace(
+                                    "NODE",
+                                    "",
+                                  )}`
+                                : "Unknown Room"}
                             </div>
-                            <div
-                              className={`text-sm ${
-                                logsAlert && recentAlerts[0]?.id === alert.id
-                                  ? "text-gray-800"
-                                  : "text-gray-400"
-                              }`}
-                            >
+                            <div className="mt-0.5 truncate text-xs leading-5 text-[#71717a]">
                               {alert.message || "-"}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="mt-1 font-mono text-[10px] text-[#a1a1aa]">
                               {timeAgo(alert.timestamp)}
                             </div>
                           </div>
@@ -228,29 +235,36 @@ export default function Header() {
                       ))}
                     </ul>
                   )}
+                  <div className="border-t border-[#eeeeeb] bg-white px-4 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNotifications(false);
+                        navigate("/logs");
+                      }}
+                      className="text-xs font-semibold text-[#bf2d2d]"
+                    >
+                      View all logs
+                    </button>
+                  </div>
                 </div>
 
-                {/* Mobile panel: fixed overlay inside main area (appears below header) and above sidebar */}
-                <div className="md:hidden fixed top-16 z-60 bg-white border-b border-gray-200 max-h-[40vh] overflow-y-auto left-20 right-4 rounded-lg shadow-sm">
-                  <div className="px-3 py-2 font-semibold text-black text-sm">
+                <div className="fixed left-20 right-4 top-16 z-[99999] max-h-[40vh] overflow-y-auto rounded-2xl border border-[#e4e4e0] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.2)] md:hidden">
+                  <div className="border-b border-[#eeeeeb] px-3 py-2 text-sm font-semibold text-[#18181b]">
                     Recent Alerts
                   </div>
                   {recentAlerts.length === 0 ? (
-                    <div className="px-3 py-2 text-gray-500 text-sm">
+                    <div className="px-3 py-2 text-sm text-[#71717a]">
                       No recent alerts.
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-100">
+                    <ul>
                       {recentAlerts.map((alert) => (
                         <li
                           key={alert.id}
-                          className={`px-3 py-2 flex items-start gap-2 hover:bg-gray-50 transition-colors ${
-                            logsAlert && recentAlerts[0]?.id === alert.id
-                              ? "bg-white font-semibold text-gray-900"
-                              : "bg-gray-50 font-normal text-gray-500"
-                          }`}
+                          className="flex items-start gap-2 border-b border-[#eeeeeb] px-3 py-2 transition-colors hover:bg-[#fafaf8]"
                         >
-                          <div className="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center">
+                          <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#bf2d2d]">
                             {(() => {
                               const level = (
                                 alert.alert_level || ""
@@ -263,8 +277,7 @@ export default function Header() {
                               ) {
                                 return (
                                   <FaExclamationTriangle
-                                    className="w-5 h-5"
-                                    color="#f87171"
+                                    className="h-4 w-4"
                                     title="Alert"
                                   />
                                 );
@@ -274,8 +287,7 @@ export default function Header() {
                               ) {
                                 return (
                                   <FaExclamationTriangle
-                                    className="w-5 h-5"
-                                    color="#facc15"
+                                    className="h-4 w-4 text-[#c47d0a]"
                                     title="Warning"
                                   />
                                 );
@@ -284,27 +296,19 @@ export default function Header() {
                               }
                             })()}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-medium">
-                                {alert.node
-                                  ? `Room ${String(alert.node).replace(
-                                      "NODE",
-                                      "",
-                                    )}`
-                                  : "Unknown Room"}
-                              </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium text-[#18181b]">
+                              {alert.node
+                                ? `Room ${String(alert.node).replace(
+                                    "NODE",
+                                    "",
+                                  )}`
+                                : "Unknown Room"}
                             </div>
-                            <div
-                              className={`text-sm ${
-                                logsAlert && recentAlerts[0]?.id === alert.id
-                                  ? "text-gray-800"
-                                  : "text-gray-500"
-                              }`}
-                            >
+                            <div className="text-sm text-[#71717a]">
                               {alert.message || "-"}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5">
+                            <div className="mt-0.5 text-xs text-[#a1a1aa]">
                               {timeAgo(alert.timestamp)}
                             </div>
                           </div>
@@ -316,28 +320,6 @@ export default function Header() {
               </>
             )}
           </div>
-
-          {/* Profile */}
-          <button className="flex items-center gap-2 p-2 rounded-lg ">
-            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border border-white/30 overflow-hidden">
-              {authUser?.photoURL ? (
-                <img
-                  src={authUser.photoURL}
-                  alt={authUser.displayName || authUser.email || "User"}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <User size={20} className="text-white" />
-              )}
-            </div>
-            <span className="text-sm font-medium text-white">
-              {authLoading
-                ? "..."
-                : role
-                  ? role.charAt(0).toUpperCase() + role.slice(1)
-                  : "User"}
-            </span>
-          </button>
         </div>
       </header>
     </>
