@@ -2,10 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRoom } from "../context/RoomContext";
 import { auth, firestore } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
-import {
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-} from "firebase/auth";
+import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import {
   FaHome,
   FaEdit,
@@ -56,6 +53,16 @@ const SETTINGS_SECTIONS = [
   { id: "contacts", label: "Emergency Contacts" },
 ];
 
+const SETTINGS_SECTION_BUTTON_STYLE = {
+  fontSize: "var(--fg-text-detail)",
+};
+
+const THRESHOLD_INPUT_STYLE = {
+  fontFamily: "var(--fg-mono)",
+  fontSize: "var(--fg-text-micro)",
+  lineHeight: 1.2,
+};
+
 function buildThresholdForm(thresholds) {
   const normalized = normalizeThresholds(thresholds);
 
@@ -66,7 +73,10 @@ function buildThresholdForm(thresholds) {
         sensorKey,
         normalized[sensorKey].warningMax,
       ),
-      alert: getAlertFromWarningMax(sensorKey, normalized[sensorKey].warningMax),
+      alert: getAlertFromWarningMax(
+        sensorKey,
+        normalized[sensorKey].warningMax,
+      ),
     };
     return form;
   }, {});
@@ -556,7 +566,10 @@ export default function SettingsPage() {
       throw new Error("This account does not support password verification.");
     }
 
-    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    const credential = EmailAuthProvider.credential(
+      currentUser.email,
+      password,
+    );
     await reauthenticateWithCredential(currentUser, credential);
   };
 
@@ -659,8 +672,7 @@ export default function SettingsPage() {
   const requestRestorePassword = (backup) => {
     requestPasswordVerification({
       title: "Restore backup",
-      message:
-        "Enter your account password before replacing live system data.",
+      message: "Enter your account password before replacing live system data.",
       onVerified: () => executeRestoreBackup(backup),
     });
   };
@@ -761,7 +773,8 @@ export default function SettingsPage() {
                     key={item.id}
                     type="button"
                     onClick={() => setActiveSettingsSection(item.id)}
-                    className={`mb-px block w-full rounded-[7px] px-2.5 py-2 text-left text-micro transition ${
+                    style={SETTINGS_SECTION_BUTTON_STYLE}
+                    className={`mb-px block w-full rounded-[7px] px-2.5 py-2 text-left text-detail transition ${
                       active
                         ? "bg-red-50 font-medium text-red-600"
                         : "font-normal text-slate-600 hover:bg-[#f6f4f1] hover:text-slate-950"
@@ -828,7 +841,8 @@ export default function SettingsPage() {
                                     event.target.value,
                                   )
                                 }
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1.5 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                style={THRESHOLD_INPUT_STYLE}
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
                                 aria-label={`${meta.label} warning minimum`}
                               />
                             </label>
@@ -850,7 +864,8 @@ export default function SettingsPage() {
                                     event.target.value,
                                   )
                                 }
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1.5 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
+                                style={THRESHOLD_INPUT_STYLE}
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-white px-2 py-1 font-mono text-micro text-slate-950 outline-none transition focus:border-red-500"
                                 aria-label={`${meta.label} warning maximum`}
                               />
                             </label>
@@ -865,7 +880,8 @@ export default function SettingsPage() {
                                 step={meta.precision > 0 ? "0.1" : "1"}
                                 readOnly
                                 value={thresholdForm[sensorKey]?.alert ?? ""}
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1.5 font-mono text-micro text-slate-500 outline-none"
+                                style={THRESHOLD_INPUT_STYLE}
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1 font-mono text-micro text-slate-500 outline-none"
                                 aria-label={`${meta.label} alert threshold`}
                               />
                             </label>
@@ -878,7 +894,8 @@ export default function SettingsPage() {
                                 type="text"
                                 readOnly
                                 value={unitLabel}
-                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1.5 font-mono text-micro text-slate-950 outline-none"
+                                style={THRESHOLD_INPUT_STYLE}
+                                className="w-full rounded-[5px] border border-[#e2ddd8] bg-[#f6f4f1] px-2 py-1 font-mono text-micro text-slate-950 outline-none"
                                 aria-label={`${meta.label} unit`}
                               />
                             </label>
@@ -951,7 +968,7 @@ export default function SettingsPage() {
                           <FaDatabase className="text-lg" />
                         </div>
                         <div>
-                          <h3 className="fg-card-title">Backup & Restore</h3>
+                          <h3 className="fg-card-title ">Backup & Restore</h3>
                           <p className="fg-card-sub">
                             Export or restore system database records.
                           </p>

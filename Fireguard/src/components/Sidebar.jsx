@@ -223,9 +223,9 @@ export default function Sidebar() {
                 aria-label="Logout"
               >
                 <div className="flex min-w-[20px] items-center opacity-80">
-                  <LogOut size={20} />
+                  <LogOut size={18} />
                 </div>
-                <span className="ml-2.5">Logout</span>
+                <span className="ml-2.5 text-[13px]">Logout</span>
               </button>
             )}
           </div>

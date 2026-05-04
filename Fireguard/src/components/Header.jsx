@@ -117,7 +117,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="relative z-[9000] flex min-h-[62px] items-center justify-between gap-4 border-b border-[#e4e4e0] bg-white/95 px-5 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] backdrop-blur-[18px] md:px-7">
+      <header className="relative z-30 flex min-h-[62px] items-center justify-between gap-4 border-b border-[#e4e4e0] bg-white/95 px-5 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] backdrop-blur-[18px] md:px-7">
         <div className="min-w-0">
           <span className="text-base font-semibold tracking-normal text-[#18181b]">
             {pageTitle}
