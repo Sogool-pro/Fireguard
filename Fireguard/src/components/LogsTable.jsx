@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
+import { downloadLogsWorkbook } from "../utils/logWorkbookExport";
 
 function formatLogDateParts(dateStr) {
   if (!dateStr || dateStr === "-") return { date: "-", time: "" };
@@ -114,24 +115,7 @@ export default function LogsTable({ logs }) {
   const handleExportExcel = async () => {
     setExporting(true);
     try {
-      const XLSX = await import("xlsx");
-      const exportLogs = filteredLogs.map((log) => ({
-        Date: log.date,
-        Room: log.room,
-        Alarm: log.alert,
-        Temperature: log.temperature,
-        Humidity: log.humidity,
-        "Flame Sensor": log.flame,
-        "Smoke Level": log.smoke,
-        "CO Level": log.carbonMonoxide,
-        "Entry Type": log.entryType,
-        "Recorded By": log.reportedBy,
-        Notes: log.notes,
-      }));
-      const worksheet = XLSX.utils.json_to_sheet(exportLogs);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
-      XLSX.writeFile(workbook, "Logs.xlsx");
+      downloadLogsWorkbook(filteredLogs);
     } finally {
       setExporting(false);
     }
