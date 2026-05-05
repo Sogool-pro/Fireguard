@@ -21,19 +21,13 @@ import {
   isRoomAlert,
   isRoomWarning,
 } from "../utils/sensorThresholds";
+import { formatRecentAlertTime } from "../utils/formatRecentAlertTime";
 
 function getAlertTone(alert) {
   const level = String(alert.alert_level || alert.level || "").toLowerCase();
   const message = String(alert.message || "").toLowerCase();
   if (level === "warning" || message.includes("warning")) return "warning";
   return "danger";
-}
-
-function formatAlertTime(timestamp) {
-  if (!timestamp) return "-";
-  const date = new Date(String(timestamp).replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return timestamp;
-  return date.toLocaleString();
 }
 
 export default function Dashboard() {
@@ -183,7 +177,7 @@ export default function Dashboard() {
                       {alert.message || "-"}
                     </div>
                     <div className="alert-time">
-                      {formatAlertTime(alert.timestamp)}
+                      {formatRecentAlertTime(alert.timestamp)}
                     </div>
                   </div>
                 </div>

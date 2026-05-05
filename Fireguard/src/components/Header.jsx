@@ -9,6 +9,7 @@ import { limitToLast, onValue, orderByChild, query, ref } from "firebase/databas
 import { useLocation, useNavigate } from "react-router-dom";
 import buzzer from "../public/buzzer.mp3";
 import { shouldPlayRoomBuzzer } from "../utils/sensorThresholds";
+import { formatRecentAlertTime } from "../utils/formatRecentAlertTime";
 
 export default function Header() {
   const { rooms } = useRoom();
@@ -98,17 +99,6 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showNotifications]);
 
-  // Helper: time ago
-  function timeAgo(dateString) {
-    if (!dateString) return "-";
-    const now = new Date();
-    const date = new Date(dateString.replace(/-/g, "/"));
-    const diff = Math.floor((now - date) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
-    return date.toLocaleString();
-  }
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -244,7 +234,7 @@ export default function Header() {
                               {alert.message || "-"}
                             </div>
                             <div className="mt-1 font-mono text-micro text-[#a1a1aa]">
-                              {timeAgo(alert.timestamp)}
+                              {formatRecentAlertTime(alert.timestamp)}
                             </div>
                           </div>
                         </li>
@@ -325,7 +315,7 @@ export default function Header() {
                               {alert.message || "-"}
                             </div>
                             <div className="mt-0.5 text-xs text-[#a1a1aa]">
-                              {timeAgo(alert.timestamp)}
+                              {formatRecentAlertTime(alert.timestamp)}
                             </div>
                           </div>
                         </li>
