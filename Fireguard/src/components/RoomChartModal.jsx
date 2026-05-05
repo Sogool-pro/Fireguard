@@ -28,6 +28,7 @@ const HISTORY_TOOLTIP = {
   itemStyle: { fontSize: 12 },
   labelStyle: { color: "#71717a", fontSize: 11 },
 };
+const CELSIUS_UNIT = "\u00b0C";
 
 function parseTimestamp(value) {
   if (!value) return null;
@@ -249,7 +250,7 @@ export default function RoomChartModal() {
             <div className="mini-metric">
               <div className="mini-label">Temperature</div>
               <div className="mini-value">
-                {formatMetric(current.temperature, "\u00b0C")}
+                {formatMetric(current.temperature, CELSIUS_UNIT)}
               </div>
             </div>
             <div className="mini-metric">
@@ -274,7 +275,7 @@ export default function RoomChartModal() {
               data={chartData}
               dataKey="temperature"
               subtitle="Readings over time"
-              title="Temperature (\u00b0C)"
+              title={`Temperature (${CELSIUS_UNIT})`}
             />
             <HistoryChart
               color="#2563eb"

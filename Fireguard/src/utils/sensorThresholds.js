@@ -314,13 +314,17 @@ export function formatThresholdNumber(sensorKey, value) {
   return number.toFixed(3).replace(/\.?0+$/, "");
 }
 
+export function formatSensorUnit(unit) {
+  return unit === "C" ? "\u00b0C" : unit;
+}
+
 export function formatThresholdWithUnit(sensorKey, value) {
   const unit = SENSOR_THRESHOLD_DEFINITIONS[sensorKey]?.unit || "";
   const formatted = formatThresholdNumber(sensorKey, value);
 
   if (!unit || unit === "ratio") return formatted;
   if (unit === "%") return `${formatted}%`;
-  return `${formatted} ${unit}`;
+  return `${formatted} ${formatSensorUnit(unit)}`;
 }
 
 export function formatWarningRange(sensorKey, thresholds) {

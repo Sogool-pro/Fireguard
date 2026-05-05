@@ -29,6 +29,7 @@ import {
   DEFAULT_SENSOR_THRESHOLDS,
   SENSOR_THRESHOLD_DEFINITIONS,
   SENSOR_THRESHOLD_ORDER,
+  formatSensorUnit,
   formatThresholdNumber,
   normalizeThresholds,
 } from "../utils/sensorThresholds";
@@ -87,7 +88,7 @@ function buildThresholdForm(thresholds) {
 
 function getSensorUnitLabel(sensorKey) {
   const unit = SENSOR_THRESHOLD_DEFINITIONS[sensorKey].unit;
-  return unit === "C" ? "°C" : unit;
+  return formatSensorUnit(unit);
 }
 
 function getAlertFromWarningMax(sensorKey, value) {

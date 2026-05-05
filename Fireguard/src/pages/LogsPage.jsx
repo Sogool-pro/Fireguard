@@ -231,7 +231,7 @@ export default function LogsPage() {
             alert &&
             alert.temperature !== undefined &&
             alert.temperature !== null
-              ? `${alert.temperature} C`
+              ? `${alert.temperature} \u00b0C`
               : "-",
           humidity:
             alert && alert.humidity !== undefined && alert.humidity !== null
@@ -530,7 +530,7 @@ export default function LogsPage() {
               </label>
 
               <label className="form-group">
-                <span className="fg-label">Temperature (C)</span>
+                <span className="fg-label">Temperature ({"\u00b0C"})</span>
                 <input
                   type="number"
                   step="0.1"

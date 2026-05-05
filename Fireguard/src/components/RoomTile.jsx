@@ -108,7 +108,7 @@ export default function RoomTile(props) {
           <div className="s-lbl">Temperature</div>
           <div className={`s-val ${sensorTone(temperature, "temperature", thresholds)}`}>
             {temperature}
-            <span className="unit">C</span>
+            <span className="unit">{"\u00b0C"}</span>
           </div>
         </div>
         <div className="sensor-blk">
