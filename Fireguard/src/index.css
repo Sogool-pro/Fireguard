@@ -724,6 +724,10 @@ textarea {
 }
 
 .alert-room-tag {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 2px;
   color: var(--fg-muted);
   font-family: var(--fg-mono);
@@ -731,6 +735,33 @@ textarea {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.alert-level-label {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: var(--fg-text-micro);
+  line-height: 1.2;
+}
+
+.alert-room-tag > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alert-level-label.danger {
+  border: 1px solid var(--fg-red-border);
+  background: var(--fg-red-light);
+  color: var(--fg-red);
+}
+
+.alert-level-label.warning {
+  border: 1px solid var(--fg-amber-border);
+  background: var(--fg-amber-light);
+  color: var(--fg-amber);
 }
 
 .alert-msg {
@@ -1090,10 +1121,28 @@ textarea {
 }
 
 .alarm-chip-text {
+  display: inline-flex;
   min-width: 0;
+  gap: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.alarm-chip-level {
+  flex: 0 0 auto;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.alarm-chip-separator {
+  flex: 0 0 auto;
+}
+
+.alarm-chip-text > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .log-date-cell {
@@ -1115,11 +1164,13 @@ textarea {
   font-weight: 500;
 }
 
-.co-value.danger {
+.co-value.danger,
+.sensor-log-value.danger {
   color: var(--fg-red);
 }
 
-.co-value.warning {
+.co-value.warning,
+.sensor-log-value.warning {
   color: var(--fg-amber);
 }
 

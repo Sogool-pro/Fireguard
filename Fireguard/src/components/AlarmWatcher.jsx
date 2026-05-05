@@ -13,12 +13,8 @@ function getAlarmMessage(room, thresholds) {
   const alertMsg = room.alert_message
     ? String(room.alert_message).toLowerCase()
     : "";
-  if (
-    alertLevel === "normal" ||
-    alertLevel === "normal condition" ||
-    alertMsg === "normal" ||
-    alertMsg === "normal condition"
-  ) {
+  const normalMessages = ["normal", "normal condition", "normal conditions"];
+  if (normalMessages.includes(alertLevel) || normalMessages.includes(alertMsg)) {
     return null;
   }
   if (room.alert_message && room.alert_message !== "Normal") {

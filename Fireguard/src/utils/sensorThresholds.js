@@ -52,6 +52,21 @@ export const SENSOR_THRESHOLD_DEFINITIONS = {
   },
 };
 
+const SENSOR_VALUE_ALIASES = {
+  temperature: ["temperature", "temp"],
+  gas: ["smoke", "Gas_and_Smoke", "gas", "mq2Value"],
+  co: ["carbonMonoxide", "carbon_monoxide", "co", "mq7Value"],
+  humidity: ["humidity"],
+};
+
+const ALARM_LEVEL_FIELDS = ["alert_level", "level", "severity", "type", "status"];
+
+export const ALARM_LEVEL_LABELS = {
+  alert: "Alert",
+  warning: "Warning",
+  normal: "Normal",
+};
+
 export const DEFAULT_SENSOR_THRESHOLDS = SENSOR_THRESHOLD_ORDER.reduce(
   (thresholds, sensorKey) => {
     thresholds[sensorKey] = {
@@ -70,6 +85,20 @@ function toFiniteNumber(value, fallback) {
 function toOptionalFiniteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+export function parseSensorReading(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  const text = String(value).trim();
+  if (!text || text === "-") return null;
+
+  const match = text.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function normalizePair(sensorKey, rawPair = {}) {
@@ -125,6 +154,110 @@ export function getSensorLevel(value, sensorKey, thresholds) {
   if (isSensorAlert(value, sensorKey, thresholds)) return "alert";
   if (isSensorWarning(value, sensorKey, thresholds)) return "warning";
   return "normal";
+}
+
+export function getSensorReading(source, sensorKey) {
+  if (!source || !SENSOR_THRESHOLD_DEFINITIONS[sensorKey]) return null;
+
+  const keys = SENSOR_VALUE_ALIASES[sensorKey] || [
+    SENSOR_THRESHOLD_DEFINITIONS[sensorKey].valueKey,
+  ];
+
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+
+    const reading = parseSensorReading(source[key]);
+    if (reading !== null) return reading;
+  }
+
+  return null;
+}
+
+export function getSensorLevelFromReading(value, sensorKey, thresholds) {
+  const reading = parseSensorReading(value);
+  if (reading === null) return "normal";
+
+  return getSensorLevel(reading, sensorKey, thresholds);
+}
+
+export function getTriggeredSensors(source, thresholds) {
+  return SENSOR_THRESHOLD_ORDER.map((sensorKey) => {
+    const definition = SENSOR_THRESHOLD_DEFINITIONS[sensorKey];
+    const value = getSensorReading(source, sensorKey);
+    const level =
+      value === null ? "normal" : getSensorLevel(value, sensorKey, thresholds);
+
+    return {
+      sensorKey,
+      label: definition.label,
+      unit: definition.unit,
+      value,
+      level,
+    };
+  }).filter((sensor) => sensor.level !== "normal");
+}
+
+export function normalizeAlarmLevel(value) {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return "";
+
+  if (
+    text.includes("escalated") ||
+    text.includes("alert") ||
+    text.includes("alarm") ||
+    text.includes("danger") ||
+    text.includes("critical")
+  ) {
+    return "alert";
+  }
+
+  if (text.includes("warning") || text.includes("warn")) {
+    return "warning";
+  }
+
+  if (text.includes("normal") || text.includes("info")) {
+    return "normal";
+  }
+
+  return "";
+}
+
+export function getAlarmLevel(source, thresholds) {
+  if (!source) return "alert";
+
+  for (const field of ALARM_LEVEL_FIELDS) {
+    const level = normalizeAlarmLevel(source[field]);
+    if (level) return level;
+  }
+
+  const flameText = String(source.flame || "").toLowerCase();
+  if (
+    source.fire ||
+    source.flame === 1 ||
+    flameText === "detected" ||
+    flameText.includes("flame detected")
+  ) {
+    return "alert";
+  }
+
+  const triggeredSensors = getTriggeredSensors(source, thresholds);
+  if (triggeredSensors.some((sensor) => sensor.level === "alert")) {
+    return "alert";
+  }
+  if (triggeredSensors.some((sensor) => sensor.level === "warning")) {
+    return "warning";
+  }
+
+  const messageLevel =
+    normalizeAlarmLevel(source.alert_message) ||
+    normalizeAlarmLevel(source.message) ||
+    normalizeAlarmLevel(source.alert);
+
+  return messageLevel || "alert";
+}
+
+export function formatAlarmLevelLabel(level) {
+  return ALARM_LEVEL_LABELS[normalizeAlarmLevel(level)] || ALARM_LEVEL_LABELS.alert;
 }
 
 export function isRoomAlert(room, thresholds) {

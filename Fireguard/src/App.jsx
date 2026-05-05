@@ -54,8 +54,8 @@ function LazyRoomChartModal() {
 
 function ProtectedShell() {
   return (
-    <AlarmModalProvider>
-      <ThresholdProvider>
+    <ThresholdProvider>
+      <AlarmModalProvider>
         <RoomProvider>
           <NotificationProvider>
             <RoomChartModalProvider>
@@ -96,8 +96,8 @@ function ProtectedShell() {
             </RoomChartModalProvider>
           </NotificationProvider>
         </RoomProvider>
-      </ThresholdProvider>
-    </AlarmModalProvider>
+      </AlarmModalProvider>
+    </ThresholdProvider>
   );
 }
 

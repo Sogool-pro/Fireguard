@@ -8,8 +8,21 @@ import { db } from "../firebase";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
 import { useLocation, useNavigate } from "react-router-dom";
 import buzzer from "../public/buzzer.mp3";
-import { shouldPlayRoomBuzzer } from "../utils/sensorThresholds";
+import {
+  formatAlarmLevelLabel,
+  getAlarmLevel,
+  shouldPlayRoomBuzzer,
+} from "../utils/sensorThresholds";
 import { formatRecentAlertTime } from "../utils/formatRecentAlertTime";
+
+function formatAlertMessage(value) {
+  const text = String(value || "-").trim();
+  if (!text || text === "-") return "-";
+
+  return text
+    .replace(/^(escalated\s+alert|alert|warning|warn)\s*[:;-]\s*/i, "")
+    .replace(/\s+/g, " ");
+}
 
 export default function Header() {
   const { rooms } = useRoom();
@@ -112,6 +125,24 @@ export default function Header() {
   };
   const pageTitle = pageTitles[location.pathname] || "Fireguard";
 
+  const getAlertDisplay = (alert) => {
+    const level = getAlarmLevel(alert, thresholds);
+    const levelLabel = formatAlarmLevelLabel(level);
+    const isWarning = level === "warning";
+
+    return {
+      iconBox: isWarning
+        ? "border-[#fcd34d] bg-[#fffbeb] text-[#c47d0a]"
+        : "border-[#fecaca] bg-[#fef2f2] text-[#bf2d2d]",
+      level,
+      levelLabel,
+      messageColor: isWarning ? "text-[#c47d0a]" : "text-[#bf2d2d]",
+      pill: isWarning
+        ? "border-[#fcd34d] bg-[#fffbeb] text-[#c47d0a]"
+        : "border-[#fecaca] bg-[#fef2f2] text-[#bf2d2d]",
+    };
+  };
+
   const topbarDate = new Date()
     .toLocaleDateString("en-US", {
       weekday: "short",
@@ -184,61 +215,47 @@ export default function Header() {
                     </div>
                   ) : (
                     <ul className="max-h-[330px] overflow-y-auto">
-                      {recentAlerts.map((alert) => (
-                        <li
-                          key={alert.id}
-                          className="flex gap-3 border-b border-[#eeeeeb] px-4 py-3 transition-colors hover:bg-[#fafaf8]"
-                        >
-                          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border border-[#fecaca] bg-[#fef2f2] text-[#bf2d2d]">
-                            {(() => {
-                              const level = (
-                                alert.alert_level || ""
-                              ).toLowerCase();
-                              const msg = (alert.message || "").toLowerCase();
-                              if (
-                                level === "alert" ||
-                                msg.includes("alert") ||
-                                msg.includes("flame")
-                              ) {
-                                return (
-                                  <FaExclamationTriangle
-                                    className="h-3.5 w-3.5"
-                                    title="Alert"
-                                  />
-                                );
-                              } else if (
-                                level === "warning" ||
-                                msg.includes("warning")
-                              ) {
-                                return (
-                                  <FaExclamationTriangle
-                                    className="h-3.5 w-3.5 text-[#c47d0a]"
-                                    title="Warning"
-                                  />
-                                );
-                              } else {
-                                return null;
-                              }
-                            })()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-[#18181b]">
-                              {alert.node
-                                ? `Room ${String(alert.node).replace(
-                                    "NODE",
-                                    "",
-                                  )}`
-                                : "Unknown Room"}
+                      {recentAlerts.map((alert) => {
+                        const display = getAlertDisplay(alert);
+                        const roomName = alert.node
+                          ? `Room ${String(alert.node).replace("NODE", "")}`
+                          : "Unknown Room";
+
+                        return (
+                          <li
+                            key={alert.id}
+                            className="flex gap-3 border-b border-[#eeeeeb] px-4 py-3 transition-colors hover:bg-[#fafaf8]"
+                          >
+                            <div
+                              className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border ${display.iconBox}`}
+                            >
+                              <FaExclamationTriangle
+                                className="h-3.5 w-3.5"
+                                title={display.levelLabel}
+                              />
                             </div>
-                            <div className="mt-0.5 truncate text-xs leading-5 text-[#71717a]">
-                              {alert.message || "-"}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-center gap-2 text-xs font-bold text-[#18181b]">
+                                <span className="truncate">{roomName}</span>
+                                <span
+                                  className={`flex-none rounded-full border px-1.5 py-0.5 font-mono text-micro ${display.pill}`}
+                                >
+                                  {display.levelLabel}
+                                </span>
+                              </div>
+                              <div
+                                className={`mt-0.5 truncate text-xs font-semibold leading-5 ${display.messageColor}`}
+                              >
+                                {display.levelLabel} -{" "}
+                                {formatAlertMessage(alert.message)}
+                              </div>
+                              <div className="mt-1 font-mono text-micro text-[#a1a1aa]">
+                                {formatRecentAlertTime(alert.timestamp)}
+                              </div>
                             </div>
-                            <div className="mt-1 font-mono text-micro text-[#a1a1aa]">
-                              {formatRecentAlertTime(alert.timestamp)}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                   <div className="border-t border-[#eeeeeb] bg-white px-4 py-3 text-center">
@@ -265,61 +282,47 @@ export default function Header() {
                     </div>
                   ) : (
                     <ul>
-                      {recentAlerts.map((alert) => (
-                        <li
-                          key={alert.id}
-                          className="flex items-start gap-2 border-b border-[#eeeeeb] px-3 py-2 transition-colors hover:bg-[#fafaf8]"
-                        >
-                          <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#bf2d2d]">
-                            {(() => {
-                              const level = (
-                                alert.alert_level || ""
-                              ).toLowerCase();
-                              const msg = (alert.message || "").toLowerCase();
-                              if (
-                                level === "alert" ||
-                                msg.includes("alert") ||
-                                msg.includes("flame")
-                              ) {
-                                return (
-                                  <FaExclamationTriangle
-                                    className="h-4 w-4"
-                                    title="Alert"
-                                  />
-                                );
-                              } else if (
-                                level === "warning" ||
-                                msg.includes("warning")
-                              ) {
-                                return (
-                                  <FaExclamationTriangle
-                                    className="h-4 w-4 text-[#c47d0a]"
-                                    title="Warning"
-                                  />
-                                );
-                              } else {
-                                return null;
-                              }
-                            })()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-[#18181b]">
-                              {alert.node
-                                ? `Room ${String(alert.node).replace(
-                                    "NODE",
-                                    "",
-                                  )}`
-                                : "Unknown Room"}
+                      {recentAlerts.map((alert) => {
+                        const display = getAlertDisplay(alert);
+                        const roomName = alert.node
+                          ? `Room ${String(alert.node).replace("NODE", "")}`
+                          : "Unknown Room";
+
+                        return (
+                          <li
+                            key={alert.id}
+                            className="flex items-start gap-2 border-b border-[#eeeeeb] px-3 py-2 transition-colors hover:bg-[#fafaf8]"
+                          >
+                            <div
+                              className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center ${display.messageColor}`}
+                            >
+                              <FaExclamationTriangle
+                                className="h-4 w-4"
+                                title={display.levelLabel}
+                              />
                             </div>
-                            <div className="text-sm text-[#71717a]">
-                              {alert.message || "-"}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-[#18181b]">
+                                <span className="truncate">{roomName}</span>
+                                <span
+                                  className={`flex-none rounded-full border px-1.5 py-0.5 font-mono text-micro ${display.pill}`}
+                                >
+                                  {display.levelLabel}
+                                </span>
+                              </div>
+                              <div
+                                className={`text-sm font-semibold ${display.messageColor}`}
+                              >
+                                {display.levelLabel} -{" "}
+                                {formatAlertMessage(alert.message)}
+                              </div>
+                              <div className="mt-0.5 text-xs text-[#a1a1aa]">
+                                {formatRecentAlertTime(alert.timestamp)}
+                              </div>
                             </div>
-                            <div className="mt-0.5 text-xs text-[#a1a1aa]">
-                              {formatRecentAlertTime(alert.timestamp)}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

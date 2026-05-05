@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
+import { useThresholds } from "../context/ThresholdContext";
 import { downloadLogsWorkbook } from "../utils/logWorkbookExport";
+import {
+  formatAlarmLevelLabel,
+  getAlarmLevel,
+  getSensorLevelFromReading,
+} from "../utils/sensorThresholds";
 
 function formatLogDateParts(dateStr) {
   if (!dateStr || dateStr === "-") return { date: "-", time: "" };
@@ -53,8 +59,7 @@ function formatAlarmText(value) {
   if (!text || text === "-") return "-";
 
   return text
-    .replace(/^alert:\s*/i, "ALERT: ")
-    .replace(/^warning:\s*/i, "Warning: ")
+    .replace(/^(escalated\s+alert|alert|warning|warn)\s*[:;-]\s*/i, "")
     .replace(/\s+/g, " ");
 }
 
@@ -85,6 +90,7 @@ export default function LogsTable({ logs }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const { thresholds } = useThresholds();
   const rowsPerPage = 6;
 
   const filteredLogs = useMemo(() => {
@@ -121,10 +127,16 @@ export default function LogsTable({ logs }) {
     }
   };
 
-  const getAlarmTone = (value) => {
-    const text = String(value || "").toLowerCase();
-    if (text.includes("warning") || text.includes("warn")) return "warning";
+  const getAlarmTone = (level) => {
+    if (level === "warning") return "warning";
     return "danger";
+  };
+
+  const getSensorTone = (value, sensorKey) => {
+    const level = getSensorLevelFromReading(value, sensorKey, thresholds);
+    if (level === "alert") return "danger";
+    if (level === "warning") return "warning";
+    return "";
   };
 
   return (
@@ -172,7 +184,9 @@ export default function LogsTable({ logs }) {
           </thead>
           <tbody>
             {paginatedLogs.map((log, idx) => {
-              const alarmTone = getAlarmTone(log.alert);
+              const alarmLevel = getAlarmLevel(log, thresholds);
+              const alarmTone = getAlarmTone(alarmLevel);
+              const alarmLevelLabel = formatAlarmLevelLabel(alarmLevel);
               const dateParts = formatLogDateParts(log.date);
 
               return (
@@ -186,15 +200,45 @@ export default function LogsTable({ logs }) {
                     <span className={`alarm-chip ${alarmTone}`}>
                       <span className="alarm-chip-icon" aria-hidden="true" />
                       <span className="alarm-chip-text">
-                        {formatAlarmText(log.alert)}
+                        <span className="alarm-chip-level">
+                          {alarmLevelLabel}
+                        </span>
+                        <span className="alarm-chip-separator">-</span>
+                        <span>{formatAlarmText(log.alert)}</span>
                       </span>
                     </span>
                   </td>
-                  <td className="font-mono">{log.temperature}</td>
-                  <td className="font-mono">{log.humidity}</td>
+                  <td
+                    className={`font-mono sensor-log-value ${getSensorTone(
+                      log.temperature,
+                      "temperature",
+                    )}`}
+                  >
+                    {log.temperature}
+                  </td>
+                  <td
+                    className={`font-mono sensor-log-value ${getSensorTone(
+                      log.humidity,
+                      "humidity",
+                    )}`}
+                  >
+                    {log.humidity}
+                  </td>
                   <td className="text-[#71717a]">{log.flame}</td>
-                  <td className="font-mono">{log.smoke}</td>
-                  <td className={`font-mono co-value ${alarmTone}`}>
+                  <td
+                    className={`font-mono sensor-log-value ${getSensorTone(
+                      log.smoke,
+                      "gas",
+                    )}`}
+                  >
+                    {log.smoke}
+                  </td>
+                  <td
+                    className={`font-mono sensor-log-value ${getSensorTone(
+                      log.carbonMonoxide,
+                      "co",
+                    )}`}
+                  >
                     {log.carbonMonoxide}
                   </td>
                   <td className="text-[#71717a]">{log.entryType}</td>

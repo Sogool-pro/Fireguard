@@ -16,18 +16,27 @@ import {
 import {
   SENSOR_THRESHOLD_DEFINITIONS,
   SENSOR_THRESHOLD_ORDER,
+  formatAlarmLevelLabel,
   formatAlertAbove,
   formatWarningRange,
+  getAlarmLevel,
   isRoomAlert,
   isRoomWarning,
 } from "../utils/sensorThresholds";
 import { formatRecentAlertTime } from "../utils/formatRecentAlertTime";
 
-function getAlertTone(alert) {
-  const level = String(alert.alert_level || alert.level || "").toLowerCase();
-  const message = String(alert.message || "").toLowerCase();
-  if (level === "warning" || message.includes("warning")) return "warning";
+function getAlertTone(level) {
+  if (level === "warning") return "warning";
   return "danger";
+}
+
+function formatAlertMessage(value) {
+  const text = String(value || "-").trim();
+  if (!text || text === "-") return "-";
+
+  return text
+    .replace(/^(escalated\s+alert|alert|warning|warn)\s*[:;-]\s*/i, "")
+    .replace(/\s+/g, " ");
 }
 
 export default function Dashboard() {
@@ -154,7 +163,9 @@ export default function Dashboard() {
             <div className="p-5 text-sm text-[#71717a]">No recent alerts.</div>
           ) : (
             recentAlerts.map((alert) => {
-              const tone = getAlertTone(alert);
+              const level = getAlarmLevel(alert, thresholds);
+              const tone = getAlertTone(level);
+              const levelLabel = formatAlarmLevelLabel(level);
               const roomName = alert.node
                 ? `Room ${String(alert.node).replace("NODE", "")}`
                 : "Unknown Room";
@@ -168,13 +179,18 @@ export default function Dashboard() {
                     !
                   </div>
                   <div className="min-w-0">
-                    <div className="alert-room-tag">{roomName}</div>
+                    <div className="alert-room-tag">
+                      <span>{roomName}</span>
+                      <span className={`alert-level-label ${tone}`}>
+                        {levelLabel}
+                      </span>
+                    </div>
                     <div
                       className={`alert-msg ${
                         tone === "warning" ? "warning" : "danger"
                       }`}
                     >
-                      {alert.message || "-"}
+                      {levelLabel} - {formatAlertMessage(alert.message)}
                     </div>
                     <div className="alert-time">
                       {formatRecentAlertTime(alert.timestamp)}
