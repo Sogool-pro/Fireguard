@@ -12,6 +12,9 @@ import { useThresholds } from "./ThresholdContext";
 import { shouldPlayRoomBuzzer } from "../utils/sensorThresholds";
 const RoomContext = createContext();
 
+const SENSOR_DATA_IDLE_TIMEOUT_MS = 60000;
+const SENSOR_DATA_IDLE_CHECK_MS = 1000;
+
 export function useRoom() {
   return useContext(RoomContext);
 }
@@ -21,33 +24,85 @@ function didNodeTimeout(sensor) {
   return sensor?.active === false || alertMessage.includes("node timeout");
 }
 
+function getSensorDataSignature(sensor = {}) {
+  return JSON.stringify([
+    sensor.timestamp ?? "",
+    sensor.temperature ?? "",
+    sensor.humidity ?? "",
+    sensor.Gas_and_Smoke ?? "",
+    sensor.carbon_monoxide ?? "",
+    sensor.flame ?? "",
+    sensor.alert_level ?? "",
+    sensor.alert_message ?? "",
+    sensor.active ?? "",
+  ]);
+}
+
+function parseSensorTimestamp(timestamp, fallback) {
+  if (!timestamp) return fallback;
+
+  const parsedTime = new Date(String(timestamp).replace(" ", "T")).getTime();
+  return Number.isNaN(parsedTime) ? fallback : parsedTime;
+}
+
+function getOfflineRoom(room, offlineReason = "sensor-idle") {
+  return {
+    ...room,
+    temperature: 0,
+    humidity: 0,
+    smoke: 0,
+    carbonMonoxide: 0,
+    flame: 0,
+    fire: false,
+    status: "Offline",
+    silenced: true,
+    isOffline: true,
+    offlineReason,
+  };
+}
+
 export function RoomProvider({ children }) {
   const { thresholds } = useThresholds();
   const [rooms, setRooms] = useState([]);
   const [buzzerOn, setBuzzerOn] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const audioRef = useRef(null);
+  const sensorDataSignaturesRef = useRef(new Map());
+  const lastSensorDataAtRef = useRef(new Map());
 
   useEffect(() => {
     const sensorRef = ref(db, "sensor_data");
     const unsub = onValue(sensorRef, (snapshot) => {
       const data = snapshot.val() || {};
       const now = Date.now();
+      const activeNodes = new Set(Object.keys(data));
+
+      sensorDataSignaturesRef.current.forEach((_, node) => {
+        if (!activeNodes.has(node)) {
+          sensorDataSignaturesRef.current.delete(node);
+          lastSensorDataAtRef.current.delete(node);
+        }
+      });
+
       const roomsArr = Object.entries(data).map(([node, sensor]) => {
-        // Keep the hub timestamp for display/history; offline status comes from the hub timeout payload.
-        let sensorTimestamp = now;
-        if (sensor.timestamp) {
-          // Parse "YYYY-MM-DD HH:mm:ss" format
-          try {
-            const parsedDate = new Date(sensor.timestamp.replace(" ", "T"));
-            sensorTimestamp = parsedDate.getTime();
-          } catch {
-            sensorTimestamp = now;
-          }
+        // Keep the hub timestamp for display/history; offline status also honors the hub timeout payload.
+        const sensorTimestamp = parseSensorTimestamp(sensor.timestamp, now);
+        const sensorDataSignature = getSensorDataSignature(sensor);
+        const previousSignature = sensorDataSignaturesRef.current.get(node);
+
+        if (previousSignature !== sensorDataSignature) {
+          sensorDataSignaturesRef.current.set(node, sensorDataSignature);
+          lastSensorDataAtRef.current.set(node, now);
+        } else if (!lastSensorDataAtRef.current.has(node)) {
+          lastSensorDataAtRef.current.set(node, now);
         }
 
+        const lastSensorDataAt = lastSensorDataAtRef.current.get(node) ?? now;
         const sensorSilenced = !!sensor.silenced;
-        const isOffline = didNodeTimeout(sensor);
+        const nodeTimedOut = didNodeTimeout(sensor);
+        const sensorDataIdle =
+          !nodeTimedOut && now - lastSensorDataAt >= SENSOR_DATA_IDLE_TIMEOUT_MS;
+        const isOffline = nodeTimedOut || sensorDataIdle;
         const isSilenced = isOffline ? true : sensorSilenced;
 
         return {
@@ -70,7 +125,13 @@ export function RoomProvider({ children }) {
           alert_message: sensor.alert_message,
           silenced: isSilenced,
           lastUpdated: sensorTimestamp,
+          lastSensorDataAt,
           isOffline,
+          offlineReason: nodeTimedOut
+            ? "node-timeout"
+            : sensorDataIdle
+              ? "sensor-idle"
+              : null,
           sensorTimestampString: sensor.timestamp,
         };
       });
@@ -85,6 +146,8 @@ export function RoomProvider({ children }) {
               ...r,
               roomName: existing.customName || r.roomName,
               customName: existing.customName,
+              archived: existing.archived,
+              onRepair: existing.onRepair,
             };
           }
           return r;
@@ -92,6 +155,32 @@ export function RoomProvider({ children }) {
       });
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+
+      setRooms((current) => {
+        let changed = false;
+        const nextRooms = current.map((room) => {
+          if (
+            room.isOffline ||
+            !Number.isFinite(room.lastSensorDataAt) ||
+            now - room.lastSensorDataAt < SENSOR_DATA_IDLE_TIMEOUT_MS
+          ) {
+            return room;
+          }
+
+          changed = true;
+          return getOfflineRoom(room);
+        });
+
+        return changed ? nextRooms : current;
+      });
+    }, SENSOR_DATA_IDLE_CHECK_MS);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   // Listen for custom room names under 'room_names' and merge into rooms
