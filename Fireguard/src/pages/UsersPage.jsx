@@ -239,10 +239,6 @@ export default function UsersPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e0] bg-white/75 px-3 py-2 font-mono text-label text-[#71717a]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#16803c] shadow-[0_0_0_3px_#f0fdf4]" />
-            Live roster
-          </div>
           <button
             type="button"
             onClick={() => setAddUserModal(true)}
