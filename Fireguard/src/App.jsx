@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from "react";
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import ProfilePage from "./pages/ProfilePage";
@@ -69,7 +69,11 @@ function ProtectedShell() {
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/logs" element={<LogsPage />} />
-                      <Route path="/analytics" element={<AnalyticsPage />} />
+                      <Route path="/reports" element={<AnalyticsPage />} />
+                      <Route
+                        path="/analytics"
+                        element={<Navigate to="/reports" replace />}
+                      />
                       <Route
                         path="/users"
                         element={

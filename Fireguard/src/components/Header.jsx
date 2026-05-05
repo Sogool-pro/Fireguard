@@ -118,6 +118,7 @@ export default function Header() {
   const pageTitles = {
     "/": "Dashboard",
     "/logs": "Logs",
+    "/reports": "Reports",
     "/analytics": "Reports",
     "/users": "Users",
     "/settings": "Settings",

@@ -42,10 +42,10 @@ export default function Sidebar() {
       group: "Monitor",
     },
     {
-      path: "/analytics",
+      path: "/reports",
       text: "Reports",
       icon: <BarChart3 size={20} />,
-      active: location.pathname === "/analytics",
+      active: ["/reports", "/analytics"].includes(location.pathname),
       group: "Monitor",
     },
     {
