@@ -741,7 +741,7 @@ export default function SettingsPage() {
     if (value.includes("landline")) return "LANDLINE";
     if (value.includes("smart")) return "SMART";
     if (value.includes("admin") || value.includes("primary")) return "PRIMARY";
-    return "CONTACT";
+    return null;
   };
 
   const thresholdStatusMessage =
@@ -1252,9 +1252,11 @@ export default function SettingsPage() {
                                 <div className="truncate text-xs font-semibold tracking-tight text-slate-950">
                                   {phone.label}
                                 </div>
-                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-micro font-semibold tracking-[0.14em] text-slate-500">
-                                  {getPhoneBadge(phone)}
-                                </span>
+                                {getPhoneBadge(phone) && (
+                                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-micro font-semibold tracking-[0.14em] text-slate-500">
+                                    {getPhoneBadge(phone)}
+                                  </span>
+                                )}
                               </div>
                               <div className="mt-1 text-label font-medium text-slate-600">
                                 {phone.number}
