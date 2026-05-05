@@ -20,6 +20,13 @@ const REPORT_CHANNEL_LABELS = {
   central_hub_call: "Central Hub Call",
   manual_observation: "Manual Observation",
 };
+const MANUAL_REPORT_CHANNEL_OPTIONS = [
+  ["central_hub_sms", "Central Hub SMS"],
+  ["manual_observation", "Manual Observation"],
+];
+const MANUAL_REPORT_CHANNEL_VALUES = new Set(
+  MANUAL_REPORT_CHANNEL_OPTIONS.map(([value]) => value),
+);
 
 function getDefaultDateTimeLocal() {
   const now = new Date();
@@ -72,6 +79,12 @@ function saveQueuedManualLogs(queueItems) {
 
 function formatReportChannel(channel) {
   return REPORT_CHANNEL_LABELS[channel] || "Manual Entry";
+}
+
+function normalizeManualReportChannel(channel) {
+  return MANUAL_REPORT_CHANNEL_VALUES.has(channel)
+    ? channel
+    : initialManualForm.reportChannel;
 }
 
 function formatReportedBy(alert) {
@@ -332,7 +345,7 @@ export default function LogsPage() {
       roomNode: prev.roomNode,
       customNode: prev.customNode,
       level: prev.level,
-      reportChannel: prev.reportChannel,
+      reportChannel: normalizeManualReportChannel(prev.reportChannel),
       timestamp: getDefaultDateTimeLocal(),
     }));
   }, []);
@@ -377,7 +390,7 @@ export default function LogsPage() {
       flame: Number(manualForm.flame) === 1 ? 1 : 0,
       timestamp: formatTimestampForStorage(safeTimestamp),
       manualEntry: true,
-      report_channel: manualForm.reportChannel,
+      report_channel: normalizeManualReportChannel(manualForm.reportChannel),
       report_notes: manualForm.notes.trim() || null,
       reported_by: user?.displayName || user?.email || "unknown",
       reported_by_name: user?.displayName || null,
@@ -604,9 +617,11 @@ export default function LogsPage() {
                     handleManualFieldChange("reportChannel", e.target.value)
                   }
                 >
-                  <option value="central_hub_sms">Central Hub SMS</option>
-                  <option value="central_hub_call">Central Hub Call</option>
-                  <option value="manual_observation">Manual Observation</option>
+                  {MANUAL_REPORT_CHANNEL_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
 

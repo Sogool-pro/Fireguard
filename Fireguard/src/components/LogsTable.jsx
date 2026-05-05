@@ -112,14 +112,18 @@ function getMessageTriggeredSensorKeys(message) {
 }
 
 function isFlameTriggered(log) {
-  const flame = String(log?.flame || "").trim().toLowerCase();
+  const flame = String(log?.flame || "")
+    .trim()
+    .toLowerCase();
   const message = String(log?.alert || log?.message || "").toLowerCase();
 
   return log?.flame === 1 || flame === "detected" || message.includes("flame");
 }
 
 function getLogRowKey(log, index) {
-  return log.id || `${log.date || "log"}-${log.node || log.room || "room"}-${index}`;
+  return (
+    log.id || `${log.date || "log"}-${log.node || log.room || "room"}-${index}`
+  );
 }
 
 function formatDetailValue(value) {
@@ -307,7 +311,9 @@ export default function LogsTable({ logs }) {
                       </span>
                       {dateParts.time ? <span>{dateParts.time}</span> : null}
                     </td>
-                    <td className="log-room-cell">{formatRoomLabel(log.room)}</td>
+                    <td className="log-room-cell">
+                      {formatRoomLabel(log.room)}
+                    </td>
                     <td>
                       <span className={`alarm-chip ${alarmTone}`}>
                         <span className="alarm-chip-icon" aria-hidden="true" />
@@ -361,7 +367,10 @@ export default function LogsTable({ logs }) {
                   </tr>
                   {isExpanded ? (
                     <tr className="log-detail-row">
-                      <td colSpan={LOG_TABLE_COLUMN_COUNT} className="log-detail-cell">
+                      <td
+                        colSpan={LOG_TABLE_COLUMN_COUNT}
+                        className="log-detail-cell"
+                      >
                         <div className={`log-detail-panel ${alarmTone}`}>
                           <div className="log-detail-head">
                             <div>
@@ -373,7 +382,10 @@ export default function LogsTable({ logs }) {
                               </div>
                             </div>
                             <span className={`alarm-chip ${alarmTone}`}>
-                              <span className="alarm-chip-icon" aria-hidden="true" />
+                              <span
+                                className="alarm-chip-icon"
+                                aria-hidden="true"
+                              />
                               <span className="alarm-chip-text">
                                 <span className="alarm-chip-level">
                                   {alarmLevelLabel}
@@ -396,7 +408,10 @@ export default function LogsTable({ logs }) {
                                   label="Room"
                                   value={formatRoomLabel(log.room)}
                                 />
-                                <LogDetailItem label="Node" value={log.node || log.nodeId} />
+                                <LogDetailItem
+                                  label="Node"
+                                  value={log.node || log.nodeId}
+                                />
                                 <LogDetailItem label="Log ID" value={log.id} />
                               </dl>
                             </section>
@@ -460,11 +475,26 @@ export default function LogsTable({ logs }) {
                             <section className="log-detail-section">
                               <h4>Report</h4>
                               <dl>
-                                <LogDetailItem label="Entry Type" value={log.entryType} />
-                                <LogDetailItem label="Recorded By" value={log.reportedBy} />
-                                <LogDetailItem label="Channel" value={log.report_channel} />
-                                <LogDetailItem label="Manual Entry" value={log.manualEntry} />
-                                <LogDetailItem label="Notes" value={log.notes} />
+                                <LogDetailItem
+                                  label="Entry Type"
+                                  value={log.entryType}
+                                />
+                                <LogDetailItem
+                                  label="Recorded By"
+                                  value={log.reportedBy}
+                                />
+                                <LogDetailItem
+                                  label="Report Source"
+                                  value={log.report_channel}
+                                />
+                                <LogDetailItem
+                                  label="Manual Entry"
+                                  value={log.manualEntry}
+                                />
+                                <LogDetailItem
+                                  label="Notes"
+                                  value={log.notes}
+                                />
                               </dl>
                             </section>
                           </div>
