@@ -240,6 +240,13 @@ export function getAlarmLevel(source, thresholds) {
     return "alert";
   }
 
+  const messageLevel =
+    normalizeAlarmLevel(source.alert_message) ||
+    normalizeAlarmLevel(source.message) ||
+    normalizeAlarmLevel(source.alert);
+
+  if (messageLevel && messageLevel !== "normal") return messageLevel;
+
   const triggeredSensors = getTriggeredSensors(source, thresholds);
   if (triggeredSensors.some((sensor) => sensor.level === "alert")) {
     return "alert";
@@ -247,11 +254,6 @@ export function getAlarmLevel(source, thresholds) {
   if (triggeredSensors.some((sensor) => sensor.level === "warning")) {
     return "warning";
   }
-
-  const messageLevel =
-    normalizeAlarmLevel(source.alert_message) ||
-    normalizeAlarmLevel(source.message) ||
-    normalizeAlarmLevel(source.alert);
 
   return messageLevel || "alert";
 }

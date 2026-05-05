@@ -5,8 +5,15 @@ import { downloadLogsWorkbook } from "../utils/logWorkbookExport";
 import {
   formatAlarmLevelLabel,
   getAlarmLevel,
-  getSensorLevelFromReading,
+  getTriggeredSensors,
 } from "../utils/sensorThresholds";
+
+const SENSOR_MESSAGE_MATCHERS = {
+  temperature: [/\btemp(?:erature)?\b/i],
+  humidity: [/\bhumid(?:ity)?\b/i],
+  gas: [/\b(?:smoke|gas|mq2)\b/i],
+  co: [/\bco\b/i, /\bcarbon(?:\s+monoxide)?\b/i, /\bmq7\b/i],
+};
 
 function formatLogDateParts(dateStr) {
   if (!dateStr || dateStr === "-") return { date: "-", time: "" };
@@ -86,6 +93,22 @@ function getPageItems(currentPage, totalPages) {
   ];
 }
 
+function getMessageTriggeredSensorKeys(message) {
+  const text = String(message || "");
+  if (!text) return [];
+
+  return Object.entries(SENSOR_MESSAGE_MATCHERS)
+    .filter(([, matchers]) => matchers.some((matcher) => matcher.test(text)))
+    .map(([sensorKey]) => sensorKey);
+}
+
+function isFlameTriggered(log) {
+  const flame = String(log?.flame || "").trim().toLowerCase();
+  const message = String(log?.alert || log?.message || "").toLowerCase();
+
+  return log?.flame === 1 || flame === "detected" || message.includes("flame");
+}
+
 export default function LogsTable({ logs }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -130,13 +153,6 @@ export default function LogsTable({ logs }) {
   const getAlarmTone = (level) => {
     if (level === "warning") return "warning";
     return "danger";
-  };
-
-  const getSensorTone = (value, sensorKey) => {
-    const level = getSensorLevelFromReading(value, sensorKey, thresholds);
-    if (level === "alert") return "danger";
-    if (level === "warning") return "warning";
-    return "";
   };
 
   return (
@@ -188,6 +204,15 @@ export default function LogsTable({ logs }) {
               const alarmTone = getAlarmTone(alarmLevel);
               const alarmLevelLabel = formatAlarmLevelLabel(alarmLevel);
               const dateParts = formatLogDateParts(log.date);
+              const triggeredSensorKeys = new Set([
+                ...getTriggeredSensors(log, thresholds).map(
+                  (sensor) => sensor.sensorKey,
+                ),
+                ...getMessageTriggeredSensorKeys(log.alert),
+              ]);
+              const getSensorTone = (sensorKey) =>
+                triggeredSensorKeys.has(sensorKey) ? alarmTone : "";
+              const flameTone = isFlameTriggered(log) ? alarmTone : "";
 
               return (
                 <tr key={log.id || idx}>
@@ -210,7 +235,6 @@ export default function LogsTable({ logs }) {
                   </td>
                   <td
                     className={`font-mono sensor-log-value ${getSensorTone(
-                      log.temperature,
                       "temperature",
                     )}`}
                   >
@@ -218,16 +242,20 @@ export default function LogsTable({ logs }) {
                   </td>
                   <td
                     className={`font-mono sensor-log-value ${getSensorTone(
-                      log.humidity,
                       "humidity",
                     )}`}
                   >
                     {log.humidity}
                   </td>
-                  <td className="text-[#71717a]">{log.flame}</td>
+                  <td
+                    className={`font-mono sensor-log-value ${
+                      flameTone || "text-[#71717a]"
+                    }`}
+                  >
+                    {log.flame}
+                  </td>
                   <td
                     className={`font-mono sensor-log-value ${getSensorTone(
-                      log.smoke,
                       "gas",
                     )}`}
                   >
@@ -235,7 +263,6 @@ export default function LogsTable({ logs }) {
                   </td>
                   <td
                     className={`font-mono sensor-log-value ${getSensorTone(
-                      log.carbonMonoxide,
                       "co",
                     )}`}
                   >
