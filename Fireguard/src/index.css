@@ -1289,6 +1289,7 @@ textarea {
 }
 
 .log-date-cell {
+  color: var(--fg-text);
   font-family: var(--fg-mono);
   font-size: var(--fg-text-label);
   line-height: 1.25;
@@ -1298,7 +1299,7 @@ textarea {
   display: block;
 }
 
-.log-date-cell span + span {
+.log-date-cell > span + span {
   margin-top: 2px;
   color: var(--fg-muted);
 }
