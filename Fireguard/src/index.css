@@ -945,6 +945,110 @@ textarea {
   outline: 0;
 }
 
+.table-filter-panel {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--fg-border-2);
+  background: #fff;
+}
+
+.reports-filter-panel {
+  overflow: hidden;
+  margin-bottom: 22px;
+  border: 1px solid rgba(24, 24, 27, 0.075);
+  border-radius: 16px;
+  background: var(--fg-surface);
+  padding: 16px 18px 18px;
+  box-shadow: var(--fg-shadow-card);
+}
+
+.filter-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filter-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--fg-muted);
+  font-family: var(--fg-mono);
+  font-size: var(--fg-text-label);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filter-count {
+  color: var(--fg-text-2);
+  font-family: var(--fg-mono);
+  font-size: var(--fg-text-label);
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filter-field-wide {
+  grid-column: span 2;
+}
+
+.filter-field > span {
+  color: var(--fg-text-2);
+  font-family: var(--fg-mono);
+  font-size: var(--fg-text-label);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.filter-search {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--fg-border);
+  border-radius: 10px;
+  background: var(--fg-surface-2);
+  padding: 7px 10px;
+}
+
+.filter-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fg-text);
+  font-size: var(--fg-text-detail);
+  outline: 0;
+}
+
+.filter-actions {
+  display: flex;
+  min-width: 0;
+  align-items: end;
+}
+
+.filter-actions .fg-btn {
+  min-height: 36px;
+  width: 100%;
+}
+
+.reports-filter-panel + div .sec-heading:first-child {
+  margin-top: 0;
+}
+
 .fg-table {
   width: 100%;
   border-collapse: collapse;
@@ -1840,12 +1944,17 @@ textarea {
   .history-modal {
     width: calc(100vw - 36px);
   }
+
+  .filter-field-wide {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 680px) {
   .fg-page-head,
   .logs-toolbar-top,
   .table-toolbar,
+  .filter-panel-head,
   .pagination {
     flex-direction: column;
     align-items: stretch;

@@ -1,19 +1,30 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Download, Search } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Filter,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 import { useThresholds } from "../context/ThresholdContext";
+import {
+  buildRoomFilterOptions,
+  countActiveFilters,
+  DEFAULT_ALERT_FILTERS,
+  ENTRY_TYPE_FILTER_OPTIONS,
+  formatRoomLabel,
+  getRecordTriggeredSensorKeys,
+  isFlameTriggered,
+  matchesAlertFilters,
+  SENSOR_FILTER_OPTIONS,
+  SEVERITY_FILTER_OPTIONS,
+} from "../utils/alertFilters";
 import { downloadLogsWorkbook } from "../utils/logWorkbookExport";
 import {
   formatAlarmLevelLabel,
   getAlarmLevel,
-  getTriggeredSensors,
 } from "../utils/sensorThresholds";
-
-const SENSOR_MESSAGE_MATCHERS = {
-  temperature: [/\btemp(?:erature)?\b/i],
-  humidity: [/\bhumid(?:ity)?\b/i],
-  gas: [/\b(?:smoke|gas|mq2)\b/i],
-  co: [/\bco\b/i, /\bcarbon(?:\s+monoxide)?\b/i, /\bmq7\b/i],
-};
 
 const SENSOR_DETAIL_LABELS = {
   temperature: "Temperature",
@@ -57,19 +68,6 @@ function formatLogDateParts(dateStr) {
   };
 }
 
-function formatRoomLabel(value) {
-  const text = String(value || "-").trim();
-  if (!text || text === "-") return "-";
-
-  const roomNoMatch = text.match(/^room\s*no\.?\s*(\d+)$/i);
-  if (roomNoMatch) return `Room No. ${roomNoMatch[1]}`;
-
-  const roomMatch = text.match(/^room\s*(\d+)$/i);
-  if (roomMatch) return `Room ${roomMatch[1]}`;
-
-  return text;
-}
-
 function formatAlarmText(value) {
   const text = String(value || "-").trim();
   if (!text || text === "-") return "-";
@@ -100,24 +98,6 @@ function getPageItems(currentPage, totalPages) {
     "end-ellipsis",
     totalPages,
   ];
-}
-
-function getMessageTriggeredSensorKeys(message) {
-  const text = String(message || "");
-  if (!text) return [];
-
-  return Object.entries(SENSOR_MESSAGE_MATCHERS)
-    .filter(([, matchers]) => matchers.some((matcher) => matcher.test(text)))
-    .map(([sensorKey]) => sensorKey);
-}
-
-function isFlameTriggered(log) {
-  const flame = String(log?.flame || "")
-    .trim()
-    .toLowerCase();
-  const message = String(log?.alert || log?.message || "").toLowerCase();
-
-  return log?.flame === 1 || flame === "detected" || message.includes("flame");
 }
 
 function getLogRowKey(log, index) {
@@ -156,22 +136,26 @@ function LogDetailItem({ label, value, tone = "" }) {
 }
 
 export default function LogsTable({ logs }) {
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_ALERT_FILTERS);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [expandedLogKey, setExpandedLogKey] = useState(null);
   const { thresholds } = useThresholds();
   const rowsPerPage = 6;
 
+  const roomOptions = useMemo(
+    () => buildRoomFilterOptions(logs, (log) => log.room || log.node),
+    [logs],
+  );
+  const activeFilterCount = countActiveFilters(filters);
   const filteredLogs = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return logs;
-
-    return logs.filter((log) => {
-      const haystack = Object.values(log).join(" ").toLowerCase();
-      return haystack.includes(query);
-    });
-  }, [logs, search]);
+    return logs.filter((log) =>
+      matchesAlertFilters(log, filters, {
+        thresholds,
+        getRoomLabel: (record) => record.room || record.node,
+      }),
+    );
+  }, [filters, logs, thresholds]);
 
   const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
   const paginatedLogs = useMemo(
@@ -200,6 +184,18 @@ export default function LogsTable({ logs }) {
     }
   };
 
+  const updateFilter = (key, value) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+    setExpandedLogKey(null);
+  };
+
+  const resetFilters = () => {
+    setFilters(DEFAULT_ALERT_FILTERS);
+    setPage(1);
+    setExpandedLogKey(null);
+  };
+
   const getAlarmTone = (level) => {
     if (level === "warning") return "warning";
     return "danger";
@@ -212,12 +208,8 @@ export default function LogsTable({ logs }) {
           <Search className="h-3.5 w-3.5 text-[#a1a1aa]" />
           <input
             placeholder="Search logs..."
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-              setExpandedLogKey(null);
-            }}
+            value={filters.query}
+            onChange={(event) => updateFilter("query", event.target.value)}
           />
         </label>
         <div className="flex flex-wrap gap-2">
@@ -230,6 +222,105 @@ export default function LogsTable({ logs }) {
             <Download className="h-3.5 w-3.5" />
             {exporting ? "Preparing..." : "Download Excel"}
           </button>
+        </div>
+      </div>
+      <div className="filter-panel table-filter-panel">
+        <div className="filter-panel-head">
+          <div className="filter-panel-title">
+            <Filter className="h-3.5 w-3.5" />
+            <span>Log Filters</span>
+          </div>
+          <span className="filter-count">
+            {filteredLogs.length} of {logs.length} entries
+          </span>
+        </div>
+        <div className="filter-grid logs-filter-grid">
+          <label className="filter-field">
+            <span>From</span>
+            <input
+              className="fg-input"
+              type="date"
+              value={filters.fromDate}
+              onChange={(event) => updateFilter("fromDate", event.target.value)}
+            />
+          </label>
+          <label className="filter-field">
+            <span>To</span>
+            <input
+              className="fg-input"
+              type="date"
+              value={filters.toDate}
+              onChange={(event) => updateFilter("toDate", event.target.value)}
+            />
+          </label>
+          <label className="filter-field">
+            <span>Room</span>
+            <select
+              className="fg-select"
+              value={filters.room}
+              onChange={(event) => updateFilter("room", event.target.value)}
+            >
+              <option value="all">All rooms</option>
+              {roomOptions.map((room) => (
+                <option key={room.value} value={room.value}>
+                  {room.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Severity</span>
+            <select
+              className="fg-select"
+              value={filters.severity}
+              onChange={(event) => updateFilter("severity", event.target.value)}
+            >
+              {SEVERITY_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Entry Type</span>
+            <select
+              className="fg-select"
+              value={filters.entryType}
+              onChange={(event) => updateFilter("entryType", event.target.value)}
+            >
+              {ENTRY_TYPE_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Sensor</span>
+            <select
+              className="fg-select"
+              value={filters.sensor}
+              onChange={(event) => updateFilter("sensor", event.target.value)}
+            >
+              {SENSOR_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="filter-actions">
+            <button
+              className="fg-btn"
+              type="button"
+              onClick={resetFilters}
+              disabled={activeFilterCount === 0}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+          </div>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -255,12 +346,10 @@ export default function LogsTable({ logs }) {
               const alarmTone = getAlarmTone(alarmLevel);
               const alarmLevelLabel = formatAlarmLevelLabel(alarmLevel);
               const dateParts = formatLogDateParts(log.date);
-              const triggeredSensorKeys = new Set([
-                ...getTriggeredSensors(log, thresholds).map(
-                  (sensor) => sensor.sensorKey,
-                ),
-                ...getMessageTriggeredSensorKeys(log.alert),
-              ]);
+              const triggeredSensorKeys = getRecordTriggeredSensorKeys(
+                log,
+                thresholds,
+              );
               const getSensorTone = (sensorKey) =>
                 triggeredSensorKeys.has(sensorKey) ? alarmTone : "";
               const flameTone = isFlameTriggered(log) ? alarmTone : "";

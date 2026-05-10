@@ -16,9 +16,21 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import { Filter, RotateCcw, Search } from "lucide-react";
 import { db } from "../firebase";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
 import { useRoom } from "../context/RoomContext";
+import { useThresholds } from "../context/ThresholdContext";
+import { getAlarmLevel } from "../utils/sensorThresholds";
+import {
+  buildRoomFilterOptions,
+  countActiveFilters,
+  DEFAULT_ALERT_FILTERS,
+  ENTRY_TYPE_FILTER_OPTIONS,
+  matchesAlertFilters,
+  SENSOR_FILTER_OPTIONS,
+  SEVERITY_FILTER_OPTIONS,
+} from "../utils/alertFilters";
 
 // Helper: Parse timestamp string to Date
 function parseTimestamp(ts) {
@@ -101,11 +113,11 @@ function getRoomData(alerts, rooms) {
 }
 
 // Helper: Severity breakdown (improved logic using level/alert_level)
-function getSeverityData(alerts) {
+function getSeverityData(alerts, thresholds) {
   let Warning = 0,
     Alert = 0;
   alerts.forEach((alert) => {
-    const level = (alert.level || alert.alert_level || "").toLowerCase();
+    const level = getAlarmLevel(alert, thresholds);
     if (level === "warning") Warning++;
     else if (level === "alert") Alert++;
   });
@@ -161,11 +173,11 @@ function getRecentSensorData(alerts) {
   });
 }
 
-function getRoomSeverityData(alerts, rooms) {
+function getRoomSeverityData(alerts, rooms, thresholds) {
   const roomMap = {};
   alerts.forEach((alert) => {
     const room = getRoomName(alert.node, rooms);
-    const level = (alert.level || alert.alert_level || "").toLowerCase();
+    const level = getAlarmLevel(alert, thresholds);
     if (!roomMap[room]) roomMap[room] = { room, Warning: 0, Alert: 0 };
     if (level === "warning") roomMap[room].Warning++;
     else if (level === "alert") roomMap[room].Alert++;
@@ -196,7 +208,7 @@ function getSensorBreakdownData(alerts) {
   ];
 }
 
-function getAlertTrendsData(alerts) {
+function getAlertTrendsData(alerts, thresholds) {
   const months = [
     "Jan",
     "Feb",
@@ -222,7 +234,7 @@ function getAlertTrendsData(alerts) {
       : null;
     if (!date) return;
     const m = date.getMonth();
-    const level = (alert.level || alert.alert_level || "").toLowerCase();
+    const level = getAlarmLevel(alert, thresholds);
     if (level === "warning") result[m].Warning++;
     else if (level === "alert") result[m].Alert++;
   });
@@ -327,8 +339,10 @@ function getRecentAlerts(data, limit = ANALYTICS_ALERT_LIMIT) {
 
 export default function AnalyticsPage() {
   const [alerts, setAlerts] = useState([]);
+  const [filters, setFilters] = useState(DEFAULT_ALERT_FILTERS);
   const [chartsReady, setChartsReady] = useState(false);
   const { rooms } = useRoom();
+  const { thresholds } = useThresholds();
 
   useEffect(() => {
     const analyticsAlertsQuery = query(
@@ -399,6 +413,37 @@ export default function AnalyticsPage() {
     return () => window.clearTimeout(timeoutId);
   }, []);
 
+  const roomLookup = useMemo(
+    () => new Map(rooms.map((room) => [room.nodeId, room.roomName])),
+    [rooms],
+  );
+  const activeFilterCount = countActiveFilters(filters);
+  const roomOptions = useMemo(
+    () =>
+      buildRoomFilterOptions(alerts, (alert) =>
+        getRoomName(alert.node, roomLookup),
+      ),
+    [alerts, roomLookup],
+  );
+  const filteredAlerts = useMemo(
+    () =>
+      alerts.filter((alert) =>
+        matchesAlertFilters(alert, filters, {
+          thresholds,
+          getRoomLabel: (record) => getRoomName(record.node, roomLookup),
+        }),
+      ),
+    [alerts, filters, roomLookup, thresholds],
+  );
+
+  const updateFilter = (key, value) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters(DEFAULT_ALERT_FILTERS);
+  };
+
   const {
     alertTrendsData,
     alertTypeData,
@@ -410,23 +455,135 @@ export default function AnalyticsPage() {
     sensorBreakdownData,
     severityData,
   } = useMemo(() => {
-    const roomLookup = new Map(rooms.map((room) => [room.nodeId, room.roomName]));
-
     return {
-      alertTrendsData: getAlertTrendsData(alerts),
-      alertTypeData: getAlertTypeData(alerts),
-      monthlyData: getMonthlyData(alerts),
-      realTimeSensorData: getRecentSensorData(alerts),
-      roomComparisonData: getRoomComparisonData(alerts, roomLookup),
-      roomData: getRoomData(alerts, roomLookup),
-      roomSeverityData: getRoomSeverityData(alerts, roomLookup),
-      sensorBreakdownData: getSensorBreakdownData(alerts),
-      severityData: getSeverityData(alerts),
+      alertTrendsData: getAlertTrendsData(filteredAlerts, thresholds),
+      alertTypeData: getAlertTypeData(filteredAlerts),
+      monthlyData: getMonthlyData(filteredAlerts),
+      realTimeSensorData: getRecentSensorData(filteredAlerts),
+      roomComparisonData: getRoomComparisonData(filteredAlerts, roomLookup),
+      roomData: getRoomData(filteredAlerts, roomLookup),
+      roomSeverityData: getRoomSeverityData(
+        filteredAlerts,
+        roomLookup,
+        thresholds,
+      ),
+      sensorBreakdownData: getSensorBreakdownData(filteredAlerts),
+      severityData: getSeverityData(filteredAlerts, thresholds),
     };
-  }, [alerts, rooms]);
+  }, [filteredAlerts, roomLookup, thresholds]);
 
   return (
     <div className="fg-page reports-page">
+      <section className="filter-panel reports-filter-panel">
+        <div className="filter-panel-head">
+          <div className="filter-panel-title">
+            <Filter className="h-3.5 w-3.5" />
+            <span>Report Filters</span>
+          </div>
+          <span className="filter-count">
+            {filteredAlerts.length} of {alerts.length} records
+          </span>
+        </div>
+        <div className="filter-grid reports-filter-grid">
+          <label className="filter-field filter-field-wide">
+            <span>Search</span>
+            <div className="filter-search">
+              <Search className="h-3.5 w-3.5 text-[#a1a1aa]" />
+              <input
+                placeholder="Search reports..."
+                value={filters.query}
+                onChange={(event) => updateFilter("query", event.target.value)}
+              />
+            </div>
+          </label>
+          <label className="filter-field">
+            <span>From</span>
+            <input
+              className="fg-input"
+              type="date"
+              value={filters.fromDate}
+              onChange={(event) => updateFilter("fromDate", event.target.value)}
+            />
+          </label>
+          <label className="filter-field">
+            <span>To</span>
+            <input
+              className="fg-input"
+              type="date"
+              value={filters.toDate}
+              onChange={(event) => updateFilter("toDate", event.target.value)}
+            />
+          </label>
+          <label className="filter-field">
+            <span>Room</span>
+            <select
+              className="fg-select"
+              value={filters.room}
+              onChange={(event) => updateFilter("room", event.target.value)}
+            >
+              <option value="all">All rooms</option>
+              {roomOptions.map((room) => (
+                <option key={room.value} value={room.value}>
+                  {room.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Severity</span>
+            <select
+              className="fg-select"
+              value={filters.severity}
+              onChange={(event) => updateFilter("severity", event.target.value)}
+            >
+              {SEVERITY_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Entry Type</span>
+            <select
+              className="fg-select"
+              value={filters.entryType}
+              onChange={(event) => updateFilter("entryType", event.target.value)}
+            >
+              {ENTRY_TYPE_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Sensor</span>
+            <select
+              className="fg-select"
+              value={filters.sensor}
+              onChange={(event) => updateFilter("sensor", event.target.value)}
+            >
+              {SENSOR_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="filter-actions">
+            <button
+              className="fg-btn"
+              type="button"
+              onClick={resetFilters}
+              disabled={activeFilterCount === 0}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+          </div>
+        </div>
+      </section>
       {/* Section 1: Trends & Patterns */}
       <div>
         <div className="sec-heading">Trends & Patterns</div>
