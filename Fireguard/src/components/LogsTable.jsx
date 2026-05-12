@@ -10,13 +10,16 @@ import {
 import { useThresholds } from "../context/ThresholdContext";
 import {
   buildRoomFilterOptions,
+  buildYearFilterOptions,
   countActiveFilters,
   DEFAULT_ALERT_FILTERS,
+  DAY_FILTER_OPTIONS,
   ENTRY_TYPE_FILTER_OPTIONS,
   formatRoomLabel,
   getRecordTriggeredSensorKeys,
   isFlameTriggered,
   matchesAlertFilters,
+  MONTH_FILTER_OPTIONS,
   SENSOR_FILTER_OPTIONS,
   SEVERITY_FILTER_OPTIONS,
 } from "../utils/alertFilters";
@@ -147,6 +150,7 @@ export default function LogsTable({ logs }) {
     () => buildRoomFilterOptions(logs, (log) => log.room || log.node),
     [logs],
   );
+  const yearOptions = useMemo(() => buildYearFilterOptions(logs), [logs]);
   const activeFilterCount = countActiveFilters(filters);
   const filteredLogs = useMemo(() => {
     return logs.filter((log) =>
@@ -252,6 +256,49 @@ export default function LogsTable({ logs }) {
               value={filters.toDate}
               onChange={(event) => updateFilter("toDate", event.target.value)}
             />
+          </label>
+          <label className="filter-field">
+            <span>Day</span>
+            <select
+              className="fg-select"
+              value={filters.dateDay}
+              onChange={(event) => updateFilter("dateDay", event.target.value)}
+            >
+              {DAY_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Month</span>
+            <select
+              className="fg-select"
+              value={filters.dateMonth}
+              onChange={(event) => updateFilter("dateMonth", event.target.value)}
+            >
+              {MONTH_FILTER_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>Year</span>
+            <select
+              className="fg-select"
+              value={filters.dateYear}
+              onChange={(event) => updateFilter("dateYear", event.target.value)}
+            >
+              <option value="all">All years</option>
+              {yearOptions.map((year) => (
+                <option key={year.value} value={year.value}>
+                  {year.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="filter-field">
             <span>Room</span>

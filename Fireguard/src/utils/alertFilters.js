@@ -4,6 +4,9 @@ export const DEFAULT_ALERT_FILTERS = {
   query: "",
   fromDate: "",
   toDate: "",
+  dateDay: "all",
+  dateMonth: "all",
+  dateYear: "all",
   room: "all",
   severity: "all",
   entryType: "all",
@@ -20,6 +23,30 @@ export const ENTRY_TYPE_FILTER_OPTIONS = [
   ["all", "All entries"],
   ["automatic", "Automatic"],
   ["manual", "Manual"],
+];
+
+export const DAY_FILTER_OPTIONS = [
+  ["all", "All days"],
+  ...Array.from({ length: 31 }, (_, index) => {
+    const day = index + 1;
+    return [String(day), String(day)];
+  }),
+];
+
+export const MONTH_FILTER_OPTIONS = [
+  ["all", "All months"],
+  ["1", "January"],
+  ["2", "February"],
+  ["3", "March"],
+  ["4", "April"],
+  ["5", "May"],
+  ["6", "June"],
+  ["7", "July"],
+  ["8", "August"],
+  ["9", "September"],
+  ["10", "October"],
+  ["11", "November"],
+  ["12", "December"],
 ];
 
 export const SENSOR_FILTER_OPTIONS = [
@@ -79,6 +106,21 @@ function getDateKey(value) {
 
 function getRecordDateKey(record) {
   return getDateKey(record?.date ?? record?.timestamp);
+}
+
+function getDateParts(value) {
+  const date = parseAlertDate(value);
+  if (!date) return null;
+
+  return {
+    day: date.getDate(),
+    month: date.getMonth() + 1,
+    year: date.getFullYear(),
+  };
+}
+
+function getRecordDateParts(record) {
+  return getDateParts(record?.date ?? record?.timestamp);
 }
 
 function getRecordEntryType(record) {
@@ -141,11 +183,32 @@ export function buildRoomFilterOptions(records, getRoomLabel) {
   );
 }
 
+export function buildYearFilterOptions(records) {
+  const years = new Set();
+
+  records.forEach((record) => {
+    const dateParts = getRecordDateParts(record);
+    if (dateParts) years.add(dateParts.year);
+  });
+
+  return Array.from(years)
+    .sort((a, b) => b - a)
+    .map((year) => ({ value: String(year), label: String(year) }));
+}
+
 export function countActiveFilters(filters) {
   return Object.entries(DEFAULT_ALERT_FILTERS).reduce((total, [key, value]) => {
     const current = filters[key] ?? value;
     return current !== value && String(current).trim() !== "" ? total + 1 : total;
   }, 0);
+}
+
+function matchesDatePartFilter(filterValue, recordValue) {
+  return (
+    !filterValue ||
+    filterValue === "all" ||
+    Number(filterValue) === recordValue
+  );
 }
 
 export function matchesAlertFilters(record, filters, options = {}) {
@@ -175,6 +238,22 @@ export function matchesAlertFilters(record, filters, options = {}) {
     if (!dateKey) return false;
     if (filters.fromDate && dateKey < filters.fromDate) return false;
     if (filters.toDate && dateKey > filters.toDate) return false;
+  }
+
+  const dateDayFilter = filters.dateDay ?? DEFAULT_ALERT_FILTERS.dateDay;
+  const dateMonthFilter = filters.dateMonth ?? DEFAULT_ALERT_FILTERS.dateMonth;
+  const dateYearFilter = filters.dateYear ?? DEFAULT_ALERT_FILTERS.dateYear;
+
+  if (
+    dateDayFilter !== "all" ||
+    dateMonthFilter !== "all" ||
+    dateYearFilter !== "all"
+  ) {
+    const dateParts = getRecordDateParts(record);
+    if (!dateParts) return false;
+    if (!matchesDatePartFilter(dateDayFilter, dateParts.day)) return false;
+    if (!matchesDatePartFilter(dateMonthFilter, dateParts.month)) return false;
+    if (!matchesDatePartFilter(dateYearFilter, dateParts.year)) return false;
   }
 
   if (filters.room !== "all" && normalizeFilterValue(roomLabel) !== filters.room) {
